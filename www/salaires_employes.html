@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gestion des Employés - ES Trappes</title>
+    <link rel="stylesheet" href="./FichiersCSS/adminStyle.css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* Masquer le contenu par défaut */
+      .container {
+        display: none;
+      }
+      /* Style pour les modals */
+      .modal {
+        display: none;
+        position: fixed;
+        z-index: 1;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+      }
+      .modal-content {
+        background-color: #fff;
+        margin: 10% auto;
+        padding: 20px;
+        border-radius: 8px;
+        width: 50%;
+      }
+      .close {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+      }
+      .close:hover {
+        color: #000;
+      }
+      .disabled-link {
+        color: gray;
+        cursor: not-allowed;
+        text-decoration: none;
+        pointer-events: auto;
+      }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/jwt-decode/build/jwt-decode.min.js"></script>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Gestion des Employés</h1>
+        <nav>
+          <a
+            href="cotisations_membres.html"
+            class="restricted-link"
+            data-roles="admin,superadmin"
+            >Gestion des Membres</a
+          >
+          |
+          <a
+            href="salaires_employes.html"
+            class="restricted-link"
+            data-roles="admin,superadmin"
+            >Gestion des Employés</a
+          >
+          |
+          <a
+            href="admin-registrations.html"
+            class="restricted-link"
+            data-roles="admin,superadmin"
+            >Gestion des inscriptions</a
+          >
+          |
+          <a
+            href="ActualitesAdmin.html"
+            class="restricted-link"
+            data-roles="adminCom"
+            >Gestion des Actualités</a
+          >
+          <button id="logoutBtn" class="btn btn-danger">Déconnexion</button>
+        </nav>
+      </div>
+
+      <div id="employees" class="tab-content">
+        <h2>Salaires des Employés</h2>
+        <div class="filters">
+          <input
+            type="text"
+            id="searchInput"
+            placeholder="Rechercher un employé..."
+          />
+          <select id="contractStatusFilter">
+            <option value="">Tous les statuts</option>
+            <option value="CDI">CDI</option>
+            <option value="CDD">CDD</option>
+            <option value="Indépendant">Indépendant</option>
+          </select>
+          <select id="positionFilter">
+            <option value="">Toutes les positions</option>
+            <!-- Options générées dynamiquement par JavaScript -->
+          </select>
+          <div class="button-row">
+            <button onclick="showAddEmployeeModal()" class="btn btn-success">
+              Ajouter un employé
+            </button>
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th onclick="toggleSort('lastName')" style="cursor: pointer">
+                Nom ⇅
+              </th>
+              <th>Prénom</th>
+              <th>Statut du contrat</th>
+              <th>Position</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="employeesTableBody">
+            <!-- Données injectées par JS -->
+          </tbody>
+        </table>
+        <div class="pagination-controls">
+          <button onclick="firstPage()" class="btn btn-secondary">
+            Première
+          </button>
+          <button onclick="previousPage()" class="btn btn-secondary">
+            Précédent
+          </button>
+          <span id="pageInfo"></span>
+          <button onclick="nextPage()" class="btn btn-secondary">
+            Suivant
+          </button>
+          <button onclick="lastPage()" class="btn btn-secondary">
+            Dernière
+          </button>
+        </div>
+      </div>
+
+      <!-- Modal pour les détails d'un employé -->
+      <div id="employeeDetailsModal" class="modal">
+        <div class="modal-content">
+          <span class="close" onclick="closeModal()">&times;</span>
+          <h2>Détails de l'employé</h2>
+          <div id="employeeDetailsContent" class="modal-grid">
+            <!-- Détails injectés par JS -->
+          </div>
+          <div class="payment-history">
+            <h3>Historique des paiements</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Montant</th>
+                  <th>Heures travaillées</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody id="paymentHistoryBody">
+                <!-- Historique des paiements injecté par JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal pour ajouter un employé -->
+      <div id="addEmployeeModal" class="modal">
+        <div class="modal-content">
+          <span class="close" onclick="closeAddEmployeeModal()">&times;</span>
+          <h2>Ajouter un nouvel employé</h2>
+          <form id="addEmployeeForm">
+            <div class="form-group">
+              <label for="licenseNumber">Numéro de licence</label>
+              <input
+                type="text"
+                id="licenseNumber"
+                name="licenseNumber"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label for="email">Email</label>
+              <input type="email" id="email" name="email" required />
+            </div>
+            <div class="form-group">
+              <label for="phone">Téléphone</label>
+              <input type="text" id="phone" name="phone" required />
+            </div>
+            <div class="form-group">
+              <label for="firstName">Prénom</label>
+              <input type="text" id="firstName" name="firstName" required />
+            </div>
+            <div class="form-group">
+              <label for="lastName">Nom</label>
+              <input type="text" id="lastName" name="lastName" required />
+            </div>
+            <div class="form-group">
+              <label for="gender">Genre</label>
+              <select id="gender" name="gender" required>
+                <option value="M">Homme</option>
+                <option value="F">Femme</option>
+                <option value="Unknown">Inconnu</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="positions">Position</label>
+              <select id="positions" name="positions" required>
+                <!-- Options générées dynamiquement par JavaScript -->
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="birthDate">Date de naissance</label>
+              <input type="date" id="birthDate" name="birthDate" required />
+            </div>
+            <div class="form-group">
+              <label for="salaryType">Type de salaire</label>
+              <select id="salaryType" name="salaryType" required>
+                <option value="Horaire">Horaire</option>
+                <option value="Mensuel">Mensuel</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="monthlySalary">Salaire mensuel</label>
+              <input type="number" id="monthlySalary" name="monthlySalary" />
+            </div>
+            <div class="form-group">
+              <label for="hourlyRate">Taux horaire</label>
+              <input type="number" id="hourlyRate" name="hourlyRate" />
+            </div>
+            <div class="form-group">
+              <label for="contractStatus">Statut du contrat</label>
+              <select id="contractStatus" name="contractStatus" required>
+                <option value="CDI">CDI</option>
+                <option value="CDD">CDD</option>
+                <option value="Indépendant">Indépendant</option>
+              </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Ajouter</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Modal pour modifier un employé -->
+      <div id="editEmployeeModal" class="modal">
+        <div class="modal-content">
+          <span class="close" onclick="closeEditEmployeeModal()">&times;</span>
+          <h2>Modifier un employé</h2>
+          <form id="editEmployeeForm">
+            <input type="hidden" id="editEmployeeId" name="id" />
+            <div class="form-group">
+              <label for="editLicenseNumber">Numéro de licence</label>
+              <input
+                type="text"
+                id="editLicenseNumber"
+                name="licenseNumber"
+                disabled
+              />
+            </div>
+            <div class="form-group">
+              <label for="editEmail">Email</label>
+              <input type="email" id="editEmail" name="email" required />
+            </div>
+            <div class="form-group">
+              <label for="editPhone">Téléphone</label>
+              <input type="text" id="editPhone" name="phone" required />
+            </div>
+            <div class="form-group">
+              <label for="editPositions">Positions</label>
+              <input type="text" id="editPositions" name="positions" required />
+            </div>
+            <div class="form-group">
+              <label for="editContractStatus">Statut du contrat</label>
+              <select id="editContractStatus" name="contractStatus" required>
+                <option value="CDI">CDI</option>
+                <option value="CDD">CDD</option>
+                <option value="Indépendant">Indépendant</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="editMonthlySalary">Salaire mensuel</label>
+              <input
+                type="number"
+                id="editMonthlySalary"
+                name="monthlySalary"
+              />
+            </div>
+            <div class="form-group">
+              <label for="editHourlyRate">Taux horaire</label>
+              <input type="number" id="editHourlyRate" name="hourlyRate" />
+            </div>
+            <div class="form-group">
+              <label for="editSalaryType">Type de salaire</label>
+              <select id="editSalaryType" name="salaryType" required>
+                <option value="Horaire">Horaire</option>
+                <option value="Mensuel">Mensuel</option>
+              </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Modifier</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Modal pour enregistrer un salaire -->
+      <div id="recordSalaryModal" class="modal">
+        <div class="modal-content">
+          <span class="close" onclick="closeRecordSalaryModal()">&times;</span>
+          <h2>Enregistrer un salaire</h2>
+          <form id="recordSalaryForm">
+            <input type="hidden" id="recordEmployeeId" name="id" />
+            <div class="form-group" id="recordHourlyRate">
+              <label for="hoursWorked">Heures travaillées</label>
+              <input type="number" id="hoursWorked" name="hoursWorked" />
+            </div>
+            <div class="form-group" id="recordMonthlySalary">
+              <label for="monthlySalary">Salaire mensuel</label>
+              <input type="number" id="monthlySalary" name="monthlySalary" />
+            </div>
+            <button type="submit" class="btn btn-primary">Enregistrer</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Vérification du token d'administration
+      function checkAdminToken() {
+        const adminToken = localStorage.getItem("adminToken");
+        if (!adminToken) {
+          alert(
+            "Vous devez être connecté en tant qu'administrateur pour accéder à cette page."
+          );
+          window.location.href = "Admin.html";
+          return false;
+        }
+        try {
+          const decodedToken = jwt_decode(adminToken);
+          const role = decodedToken.role;
+          if (role !== "admin") {
+            alert("Accès refusé : rôle insuffisant.");
+            window.location.href = "Admin.html";
+            return false;
+          }
+          return true;
+        } catch (error) {
+          console.error("Erreur lors du décodage du token :", error);
+          alert("Token invalide ou expiré.");
+          window.location.href = "Admin.html";
+          return false;
+        }
+      }
+
+      // Déconnexion de l'utilisateur
+      function logout() {
+        localStorage.removeItem("adminToken");
+        window.location.href = "Admin.html";
+      }
+
+      // Initialisation de la page
+      document.addEventListener("DOMContentLoaded", () => {
+        if (checkAdminToken()) {
+          document.querySelector(".container").style.display = "block";
+
+          // Gestion du bouton de déconnexion
+          document
+            .getElementById("logoutBtn")
+            .addEventListener("click", logout);
+
+          // Gestion des modals
+          const modals = document.querySelectorAll(".modal");
+          modals.forEach((modal) => {
+            const closeBtn = modal.querySelector(".close");
+            closeBtn.onclick = () => {
+              modal.style.display = "none";
+            };
+            window.onclick = (event) => {
+              if (event.target === modal) {
+                modal.style.display = "none";
+              }
+            };
+          });
+
+          // Gestion des acces au lien de la navbar
+          const token = localStorage.getItem("adminToken");
+          const decoded = jwt_decode(token);
+          const role = decoded.role;
+
+          document.querySelectorAll(".restricted-link").forEach((link) => {
+            const allowedRoles = link.getAttribute("data-roles");
+            if (!allowedRoles) return; // pas de restriction
+
+            const allowedList = allowedRoles.split(",").map((r) => r.trim());
+            if (!allowedList.includes(role)) {
+              link.classList.add("disabled-link");
+              link.addEventListener("click", function (e) {
+                e.preventDefault();
+                alert("Accès réservé aux rôles : " + allowedList.join(", "));
+              });
+            }
+          });
+        }
+      });
+    </script>
+    <script src="./FichiersJS/admin-employees.js"></script>
+  </body>
+</html>

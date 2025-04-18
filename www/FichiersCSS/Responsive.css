@@ -1,0 +1,25 @@
+@media (max-width: 576px) {
+
+    .LogoEstrappes{
+        display: none;
+        position: absolute;
+    }
+    .navbar{
+        height: 50px;
+    }
+    .navbar-collapse {
+        background-color: rgba(255, 255, 255, 0.8); /* Fond sombre semi-transparent */
+      }
+      
+      .navbar-nav .nav-item .nav-link {
+        color: rgb(0, 0, 0); /* Couleur du texte pour améliorer le contraste */
+    }
+}
+@media (min-width: 576px) {
+
+    .LogoEstrappesPetit{
+        display: none;
+        position: absolute;
+    }
+}
+

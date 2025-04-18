@@ -1,0 +1,214 @@
+/* Couleurs principales */
+body {
+    font-family: 'Poppins', sans-serif !important;
+    background-color: #ffffff !important;
+    color: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* Accueil Section */
+.Accueil-section {
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+}
+.TerrainFoot {
+    width: 100%;
+    display: block;
+    height: auto;
+}
+
+/* Centrer le titre dans la section */
+.Accueil-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    color: white; /* Couleur du texte */
+    font-family: 'Poppins', sans-serif;
+}
+
+
+
+/* Logo à gauche et à droite */
+.Logo-left, .Logo-right {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.Logo-left {
+    right: 105%;
+}
+
+.Logo-right {
+    left: 105%;
+}
+
+/* Logo */
+.Logodg {
+    width: 15vw; /* Ajuste la taille du logo */
+    height: auto;
+}
+
+/* Titre */
+.Accueil-content h1 {
+    font-size: 2.3rem;
+    font-weight: 600;
+    margin: 0;
+    white-space: nowrap; /* Évite que le texte se divise sur plusieurs lignes */
+    text-overflow: ellipsis; /* Ajoute des points de suspension si le texte dépasse */
+    overflow: hidden; /* Masque le texte qui dépasse */
+    width: 100%; /* Permet au texte de s'ajuster à la largeur disponible */
+    text-align: center; /* Centre le texte */
+}
+
+/* Sous-titre */
+.sub-title {
+    font-size: 1.2rem;
+    font-weight: 400;
+    margin-top: 20px;
+}
+
+
+/* Titre de la timeline */
+.timeline-title {
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    text-align: center;
+    color: #333;
+}
+
+/* Conteneur de la timeline */
+.timeline-container {
+    width: 100%;
+    max-width: 100%; /* Prend toute la largeur disponible */
+    padding: 20px;
+}
+
+/* La timeline - alignée horizontalement et responsive */
+.timeline {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap; /* Permet aux logos de passer à la ligne sur petits écrans */
+    gap: 20px; /* Espacement entre les logos */
+    overflow: hidden; /* Empêche l'apparition de la barre de défilement */
+    white-space: nowrap; /* Empêche le retour à la ligne des éléments */
+    width: 100%; /* Prend toute la largeur disponible */
+}
+
+.timeline-title {
+    font-size: 2rem; /* Taille du texte */
+    font-weight: bold; /* Mettre le texte en gras */
+    color: #1E2A78; /* Couleur de texte dynamique (bleu) */
+    text-align: center; /* Centrer le texte */
+    margin-bottom: 20px; /* Espacement sous le titre */
+    padding: 10px 0; /* Un peu d'espace autour du titre */
+    background-color: #f0f0f0; /* Fond léger pour le titre */
+    border-radius: 8px; /* Coins arrondis pour un effet doux */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* Ombre portée subtile */
+    transition: all 0.3s ease; /* Transition douce pour les effets de survol */
+}
+
+.timeline-title:hover {
+    color: #fff; /* Changer la couleur du texte en blanc au survol */
+    background-color: #1E2A78; /* Changer la couleur de fond en bleu */
+    transform: scale(1.05); /* Agrandir légèrement au survol */
+}
+
+
+/* Un événement individuel (logo) */
+.event {
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    width: 100px; /* Largeur de chaque logo */
+    max-width: 15%; /* Ajuste la taille en fonction de l'écran */
+}
+
+.event img {
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+}
+
+.event:hover img {
+    transform: scale(1.2);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.date {
+    margin-top: 10px;
+    font-size: 14px;
+    color: #555;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.day {
+    font-size: 12px;
+    color: #777;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+/* Apparition de la date et du jour au survol */
+.event:hover .date {
+    opacity: 1;
+    font-weight: bold;
+}
+
+.event:hover .day {
+    opacity: 1;
+    font-weight: bold;
+}
+
+/* Responsive - Ajuste les logos sur petits écrans */
+@media screen and (max-width: 768px) {
+    .event {
+        width: 80px; /* Réduit la taille des logos sur petits écrans */
+        max-width: 20%; /* Ajuste la taille des logos sur petits écrans */
+    }
+}
+
+
+@media (max-width: 800px) {
+    .Accueil-content h1 {
+        font-size: 1.8rem;
+    }
+    .sub-title{
+        font-size: 1rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .Accueil-content h1 {
+        font-size: 1.2rem;
+    }
+    .sub-title{
+        font-size: 0.7rem;
+    }
+
+}
+@media (max-width: 400px) {
+    .Accueil-content h1 {
+        font-size: 1rem;
+    }
+    .sub-title{
+        font-size: 0.5rem;
+    }
+
+}
+@media (max-width: 300px) {
+    .Accueil-content h1 {
+        font-size: 0.8rem;
+    }
+    .sub-title{
+        font-size: 0.4rem;
+    }
+
+}

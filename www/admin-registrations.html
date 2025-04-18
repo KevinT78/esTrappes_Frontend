@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Administration des Inscriptions - ES Trappes</title>
+    <link rel="stylesheet" href="./FichiersCSS/adminStyle.css" />
+    <style>
+      /* Masquer le contenu par défaut */
+      .container {
+        display: none;
+      }
+      /* Style pour le modal */
+      .modal {
+        display: none;
+        position: fixed;
+        z-index: 1;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+      }
+      .modal-content {
+        background-color: #fff;
+        margin: 10% auto;
+        padding: 20px;
+        border-radius: 8px;
+        width: 50%;
+      }
+      .close {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+      }
+      .close:hover {
+        color: #000;
+      }
+      .disabled-link {
+        color: gray;
+        cursor: not-allowed;
+        text-decoration: none;
+        pointer-events: auto;
+      }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/jwt-decode/build/jwt-decode.min.js"></script>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Gestion des Inscriptions</h1>
+        <nav>
+          <a
+            href="cotisations_membres.html"
+            class="restricted-link"
+            data-roles="admin,superadmin"
+            >Gestion des Membres</a
+          >
+          |
+          <a
+            href="salaires_employes.html"
+            class="restricted-link"
+            data-roles="admin,superadmin"
+            >Gestion des Employés</a
+          >
+          |
+          <a
+            href="admin-registrations.html"
+            class="restricted-link"
+            data-roles="admin,superadmin"
+            >Gestion des inscriptions</a
+          >
+          |
+          <a
+            href="ActualitesAdmin.html"
+            class="restricted-link"
+            data-roles="adminCom"
+            >Gestion des Actualités</a
+          >
+          <button id="logoutBtn" class="btn btn-danger">Déconnexion</button>
+        </nav>
+      </div>
+
+      <div class="filters">
+        <select id="statusFilter">
+          <option value="" selected>Tous les statuts</option>
+          <option value="attente">En attente</option>
+          <option value="accepté">Acceptés</option>
+          <option value="refusé">Refusés</option>
+        </select>
+        <select id="typeFilter">
+          <option value="">Tous les types</option>
+          <option value="nouvelle">Nouvelle inscription</option>
+          <option value="renouvellement">Renouvellement</option>
+          <option value="mutation">Mutation</option>
+        </select>
+      </div>
+
+      <div class="registrations-table">
+        <table>
+          <thead>
+            <tr>
+              <th>Nom</th>
+              <th>Prénom</th>
+              <th>Type</th>
+              <th>Statut</th>
+              <th>Statut du paiement</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="registrationsTableBody">
+            <!-- Données remplis par JavaScript -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Modal pour les détails -->
+    <div id="detailsModal" class="modal">
+      <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2>Détails de l'inscription</h2>
+        <div id="registrationDetails">
+          <!-- Détails remplis par JavaScript -->
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Vérification du token d'administration
+      function checkAdminToken() {
+        const adminToken = localStorage.getItem("adminToken");
+
+        if (!adminToken) {
+          alert(
+            "Vous devez être connecté en tant qu'administrateur pour accéder à cette page."
+          );
+          window.location.href = "Admin.html";
+          return false;
+        }
+
+        try {
+          const decodedToken = jwt_decode(adminToken);
+          const role = decodedToken.role;
+
+          if (role !== "admin" && role !== "superadmin") {
+            alert("Accès refusé : rôle insuffisant.");
+            window.location.href = "Admin.html";
+            return false;
+          }
+
+          return true;
+        } catch (error) {
+          console.error("Erreur lors du décodage du token :", error);
+          alert("Token invalide ou expiré.");
+          window.location.href = "Admin.html";
+          return false;
+        }
+      }
+
+      // Déconnexion de l'utilisateur
+      function logout() {
+        localStorage.removeItem("adminToken");
+        window.location.href = "Admin.html";
+      }
+
+      // Initialisation de la page
+      document.addEventListener("DOMContentLoaded", () => {
+        if (checkAdminToken()) {
+          document.querySelector(".container").style.display = "block";
+
+          // Gestion du bouton de déconnexion
+          document
+            .getElementById("logoutBtn")
+            .addEventListener("click", logout);
+
+          // Gestion du modal
+          const modal = document.getElementById("detailsModal");
+          const closeBtn = document.querySelector(".close");
+
+          closeBtn.onclick = () => {
+            modal.style.display = "none";
+          };
+
+          window.onclick = (event) => {
+            if (event.target === modal) {
+              modal.style.display = "none";
+            }
+          };
+
+
+          // Gestion des acces au lien de la navbar
+          const token = localStorage.getItem("adminToken");
+          const decoded = jwt_decode(token);
+          const role = decoded.role;
+
+          document.querySelectorAll(".restricted-link").forEach((link) => {
+            const allowedRoles = link.getAttribute("data-roles");
+            if (!allowedRoles) return; // pas de restriction
+
+            const allowedList = allowedRoles.split(",").map((r) => r.trim());
+            if (!allowedList.includes(role)) {
+              link.classList.add("disabled-link");
+              link.addEventListener("click", function (e) {
+                e.preventDefault();
+                alert("Accès réservé aux rôles : " + allowedList.join(", "));
+              });
+            }
+          });
+        }
+      });
+    </script>
+    <script src="./FichiersJS/admin-registration.js"></script>
+  </body>
+</html>

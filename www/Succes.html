@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Paiement Réussi</title>
+  <style>
+    :root {
+      --primary-color: #4CAF50;
+      --text-color: #333;
+      --background-color: #f9f9f9;
+      --card-background: #fff;
+      --border-radius: 8px;
+      --shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--background-color);
+      color: var(--text-color);
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .container {
+      width: 90%;
+      max-width: 600px;
+      padding: 2rem;
+      background-color: var(--card-background);
+      border-radius: var(--border-radius);
+      box-shadow: var(--shadow);
+      text-align: center;
+    }
+
+    .success-icon {
+      width: 80px;
+      height: 80px;
+      background-color: var(--primary-color);
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 0 auto 1.5rem;
+    }
+
+    .success-icon svg {
+      width: 40px;
+      height: 40px;
+      fill: white;
+    }
+
+    h1 {
+      color: var(--primary-color);
+      font-size: 1.8rem;
+      margin-bottom: 1rem;
+    }
+
+    p {
+      margin-bottom: 1.5rem;
+      line-height: 1.6;
+      color: #666;
+    }
+
+    .details {
+      background-color: rgba(76, 175, 80, 0.1);
+      padding: 1rem;
+      border-radius: var(--border-radius);
+      margin-bottom: 1.5rem;
+      text-align: left;
+    }
+
+    .button {
+      display: inline-block;
+      background-color: var(--primary-color);
+      color: white;
+      text-decoration: none;
+      padding: 0.8rem 1.5rem;
+      border-radius: var(--border-radius);
+      font-weight: 600;
+      transition: background-color 0.3s;
+    }
+
+    .button:hover {
+      background-color: #3d8b40;
+    }
+
+    .footer {
+      margin-top: 2rem;
+      font-size: 0.9rem;
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="success-icon">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
+      </svg>
+    </div>
+    
+    <h1>Paiement Réussi !</h1>
+    
+    <p>Votre paiement a été traité avec succès. Nous vous remercions pour votre cotisation.</p>
+    
+    <div class="details">
+      <p><strong>Récapitulatif :</strong></p>
+      <p>• Votre paiement a été confirmé</p>
+      <p>• Un reçu a été envoyé à votre adresse email</p>
+    </div>
+    
+    <a href="https://es-trappes.com/" class="button">Retour sur le site</a>
+    
+    <p class="footer">
+      Si vous avez des questions concernant votre paiement, n'hésitez pas à contacter notre équipe.
+    </p>
+  </div>
+</body>
+</html>

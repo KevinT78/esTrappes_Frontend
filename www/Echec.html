@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Paiement Annulé</title>
+  <style>
+    :root {
+      --warning-color: #ff9800;
+      --text-color: #333;
+      --background-color: #f9f9f9;
+      --card-background: #fff;
+      --border-radius: 8px;
+      --shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--background-color);
+      color: var(--text-color);
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .container {
+      width: 90%;
+      max-width: 600px;
+      padding: 2rem;
+      background-color: var(--card-background);
+      border-radius: var(--border-radius);
+      box-shadow: var(--shadow);
+      text-align: center;
+    }
+
+    .cancel-icon {
+      width: 80px;
+      height: 80px;
+      background-color: var(--warning-color);
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 0 auto 1.5rem;
+    }
+
+    .cancel-icon svg {
+      width: 40px;
+      height: 40px;
+      fill: white;
+    }
+
+    h1 {
+      color: var(--warning-color);
+      font-size: 1.8rem;
+      margin-bottom: 1rem;
+    }
+
+    p {
+      margin-bottom: 1.5rem;
+      line-height: 1.6;
+      color: #666;
+    }
+
+    .info-box {
+      background-color: rgba(255, 152, 0, 0.1);
+      padding: 1rem;
+      border-radius: var(--border-radius);
+      margin-bottom: 1.5rem;
+      text-align: left;
+    }
+
+    .buttons {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .button-primary {
+      display: inline-block;
+      background-color: var(--warning-color);
+      color: white;
+      text-decoration: none;
+      padding: 0.8rem 1.5rem;
+      border-radius: var(--border-radius);
+      font-weight: 600;
+      transition: background-color 0.3s;
+    }
+
+    .button-primary:hover {
+      background-color: #e68a00;
+    }
+
+    .button-secondary {
+      display: inline-block;
+      background-color: transparent;
+      color: var(--text-color);
+      text-decoration: none;
+      padding: 0.8rem 1.5rem;
+      border-radius: var(--border-radius);
+      font-weight: 600;
+      border: 1px solid #ddd;
+      transition: background-color 0.3s;
+    }
+
+    .button-secondary:hover {
+      background-color: #f1f1f1;
+    }
+
+    .footer {
+      margin-top: 2rem;
+      font-size: 0.9rem;
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="cancel-icon">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm3.59-13L12 10.59 8.41 7 7 8.41 10.59 12 7 15.59 8.41 17 12 13.41 15.59 17 17 15.59 13.41 12 17 8.41z"/>
+      </svg>
+    </div>
+    
+    <h1>Paiement Annulé</h1>
+    
+    <p>Votre paiement a été annulé. Aucun montant n'a été débité de votre compte.</p>
+    
+    <div class="info-box">
+      <p><strong>Besoin d'aide ?</strong></p>
+      <p>Si vous avez rencontré des difficultés lors du processus de paiement, n'hésitez pas à nous contacter. Nous sommes là pour vous aider.</p>
+    </div>
+    
+    <div class="buttons">
+      <a href="https://es-trappes.com/" class="button-primary">Retour sur le site</a>
+    </div>
+    
+    <p class="footer">
+      Pour toute question, contactez notre service d'assistance.
+    </p>
+  </div>
+</body>
+</html>

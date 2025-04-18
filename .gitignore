@@ -1,0 +1,39 @@
+# Fichiers de logs
+*.log
+logs/
+
+# Dossiers et fichiers temporaires
+tmp/
+temp/
+*.tmp
+
+# Dépendances installées (si vous utilisez composer)
+/vendor/
+
+# Fichiers de cache
+cache/
+*.cache
+
+# Fichiers de session
+*.sess
+sessions/
+
+# Fichiers de configuration serveur spécifiques
+.htaccess.local
+.user.ini
+
+# Fichiers d'environnement
+.env
+.env.local
+
+# Dossiers/fichiers spécifiques à l'IDE
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+*.code-workspace
+
+# Fichiers système
+.DS_Store
+Thumbs.db
+desktop.ini

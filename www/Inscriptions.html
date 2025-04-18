@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inscription - esTrappes</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="./FichiersJS/inscriptionScript.js" defer></script>
+
+        <!-- Lien vers les fichiers CSS -->
+        <link href="./FichiersCSS/inscription.css" rel="stylesheet">
+        <link rel="stylesheet" href="./FichiersCSS/Style.css">
+        <link rel="stylesheet" href="./FichiersCSS/Responsive.css">
+
+</head>
+<body>
+        <!-- Navbar Estrappes -->
+        <nav class="navbar navbar-expand-sm bg-body-tertiary" >
+            <div class="container-fluid">
+
+                <!-- Logo Navbar Estrappes -->
+                <div class="LogoEstrappesPetit">
+                    <a href="./index.html">
+                        <img src="./img/Logo.png" alt="Logo Estrappes" class="LogoEst" width="50em" max-height="40px" height="auto">
+                    </a>
+                </div>
+
+                <!-- Bouton pour petit écran -->
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarScroll" aria-controls="navbarScroll" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <div class="collapse navbar-collapse" id="navbarScroll">
+                    <ul class="navbar-nav me-auto my-2 my-lg-0 navbar-nav-scroll" style="--bs-scroll-height: 100px;">
+                        <li class="nav-item"><a><div class="LogoEstrappes"><img src="./img/Logo.png" alt="logo Estrappes" class="LogoEst" width="100%" height="auto"></div></a></li>
+                        <li class="nav-item"><a class="nav-link" href="./index.html" ><B>Accueil</B></a></li>
+                        <li class="nav-item"><a class="nav-link" href="./Club.html" ><B>Le club</B></a></li>
+                        <li class="nav-item"><a class="nav-link" href="./Calendrier.html"><B>Calendrier</B></a></li>
+                        <li class="nav-item"><a class="nav-link" href="./Actualites.html"><B>Actualités</B></a></li>
+                        <li class="nav-item"><a class="nav-link" href="./Inscriptions.html" ><B>Inscriptions</B></a></li>
+                        <li class="nav-item"><a class="nav-link" href="https://www.madewis-store.com/fr" ><B>Boutique</B></a></li>
+                        <li class="nav-item"><a class="nav-link" href="./Admin.html" ><B>Admin</B></a></li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+        
+  <!-- Bouton Contact -->
+<a href="Contact.html" class="floating-btn">
+    <span>Contact</span>
+</a>
+
+
+    <div class="container mt-3">
+        <div class="row d-flex justify-content-center align-items-center">
+            <div class="col-md-8 col-lg-10 col-11 justify-content-center align-items-center p-3 my-3 formLogin">
+                <div class="form-container">
+                    <h1>Inscription esTrappes</h1>
+		    <!-- Error Message Display -->
+                     <div id="errorMessage" class="alert alert-danger" style="display: none;"></div>
+                    <form id="registrationForm">
+                        <div class="form-group">
+                            <label for="typeInscription" class="form-label fs-5">Type d'inscription</label>
+                            <select id="typeInscription" name="typeInscription" class="form-select" required>
+                                <option value="">Sélectionnez un type</option>
+                                <option value="nouvelle">Nouvelle inscription</option>
+                                <option value="renouvellement">Renouvellement</option>
+                                <option value="mutation">Mutation</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="firstName" class="form-label fs-5">Prénom</label>
+                            <input type="text" id="firstName" name="firstName" class="form-control" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="lastName" class="form-label fs-5">Nom</label>
+                            <input type="text" id="lastName" name="lastName" class="form-control" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="birthDate" class="form-label fs-5">Date de naissance</label>
+                            <input type="date" id="birthDate" name="birthDate" class="form-control" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="gender" class="form-label fs-5">Genre</label>
+                            <select id="gender" name="gender" class="form-select" required>
+                                <option value="">Sélectionnez un genre</option>
+                                <option value="M">Masculin</option>
+                                <option value="F">Féminin</option>
+                            </select>
+                        </div>
+
+                        <div class="contact-group">
+                            <div class="form-group">
+                                <label for="phone" class="form-label fs-5">Téléphone</label>
+                                <input type="tel" id="phone" name="phone" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="email" class="form-label fs-5">Email</label>
+                                <input type="email" id="email" name="email" class="form-control" required>
+                            </div>
+                        </div>
+
+                        <div class="tutor-group" style="display: none;">
+                            <h3>Tuteur légal (pour les mineurs)</h3>
+                            <div class="form-group">
+                                <label for="tutorName" class="form-label fs-5">Nom du tuteur</label>
+                                <input type="text" id="tutorName" name="tutorName" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="tutorPhone" class="form-label fs-5">Téléphone du tuteur</label>
+                                <input type="tel" id="tutorPhone" name="tutorPhone" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="tutorEmail" class="form-label fs-5">Email du tuteur</label>
+                                <input type="email" id="tutorEmail" name="tutorEmail" class="form-control">
+                            </div>
+                        </div>
+
+                        <div class="address-group">
+                            <div class="form-group">
+                                <label for="city" class="form-label fs-5">Ville</label>
+                                <input type="text" id="city" name="city" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="postalCode" class="form-label fs-5">Code postal</label>
+                                <input type="text" id="postalCode" name="postalCode" class="form-control" required>
+                            </div>
+                        </div>
+                        <div class="address-group full">
+                            <div class="form-group">
+                                <label for="fullAddress" class="form-label fs-5">Adresse complète</label>
+                                <input type="text" id="fullAddress" name="fullAddress" class="form-control" required>
+                            </div>
+                        </div>
+
+                        <div class="documents-group">
+                            <h3>Documents requis</h3>
+                            <div class="form-group">
+                                <label for="carteIdentite" class="form-label fs-5">Carte d'identité</label>
+                                <input type="file" id="carteIdentite" name="carteIdentite" class="form-control" accept=".pdf,.jpg,.jpeg,.png" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="justificatifDomicile" class="form-label fs-5">Justificatif de domicile</label>
+                                <input type="file" id="justificatifDomicile" name="justificatifDomicile" class="form-control" accept=".pdf,.jpg,.jpeg,.png" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="certificatMedical" class="form-label fs-5">Certificat médical</label>
+                                <input type="file" id="certificatMedical" name="certificatMedical" class="form-control" accept=".pdf,.jpg,.jpeg,.png" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label fs-5">Droit à l'image</label>
+                            <div class="radio-group">
+                                <label>
+                                    <input type="radio" name="droitImage" value="oui" class="form-check-input" required>
+                                    Oui
+                                </label>
+                                <label>
+                                    <input type="radio" name="droitImage" value="non" class="form-check-input" required>
+                                    Non
+                                </label>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100">Soumettre l'inscription</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div class="modal fade" id="successModal" tabindex="-1" aria-labelledby="successModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header modalColor">
+                    <h5 class="modal-title" id="successModalLabel"></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <h3 class="text-success p-2">Inscription réussie !</h3>
+                </div>
+                <div class="modal-footer justify-content-center">
+                    <a href="index.html" class="btn btn-primary">OK</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/aos@2.3.1/dist/aos.js"></script>
+    <script>
+        AOS.init();
+    </script>
+</body>
+</html>
