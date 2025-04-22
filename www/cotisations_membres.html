@@ -72,35 +72,35 @@
       <div class="header">
         <h1>Gestion des Cotisations</h1>
         <nav>
-            <a
-              href="cotisations_membres.html"
-              class="restricted-link"
-              data-roles="admin,superadmin"
-              >Gestion des Membres</a
-            >
-            |
-            <a
-              href="salaires_employes.html"
-              class="restricted-link"
-              data-roles="admin,superadmin"
-              >Gestion des Employés</a
-            >
-            |
-            <a
-              href="admin-registrations.html"
-              class="restricted-link"
-              data-roles="admin,superadmin"
-              >Gestion des inscriptions</a
-            >
-            |
-            <a
-              href="ActualitesAdmin.html"
-              class="restricted-link"
-              data-roles="adminCom"
-              >Gestion des Actualités</a
-            >
-            <button id="logoutBtn" class="btn btn-danger">Déconnexion</button>
-          </nav>
+          <a
+            href="cotisations_membres.html"
+            class="restricted-link"
+            data-roles="admin,superadmin"
+            >Gestion des Membres</a
+          >
+          |
+          <a
+            href="salaires_employes.html"
+            class="restricted-link"
+            data-roles="admin,superadmin"
+            >Gestion des Employés</a
+          >
+          |
+          <a
+            href="admin-registrations.html"
+            class="restricted-link"
+            data-roles="admin,superadmin"
+            >Gestion des inscriptions</a
+          >
+          |
+          <a
+            href="ActualitesAdmin.html"
+            class="restricted-link"
+            data-roles="adminCom, superadmin"
+            >Gestion des Actualités</a
+          >
+          <button id="logoutBtn" class="btn btn-danger">Déconnexion</button>
+        </nav>
       </div>
 
       <div id="members" class="tab-content">
@@ -498,133 +498,6 @@
       </div>
     </div>
 
-    <script>
-      // Vérification du token d'administration
-      function checkAdminToken() {
-        const adminToken = localStorage.getItem("adminToken");
-        if (!adminToken) {
-          alert(
-            "Vous devez être connecté en tant qu'administrateur pour accéder à cette page."
-          );
-          window.location.href = "Admin.html";
-          return false;
-        }
-        try {
-          const decodedToken = jwt_decode(adminToken);
-          const role = decodedToken.role;
-          if (role !== "admin") {
-            alert("Accès refusé : rôle insuffisant.");
-            window.location.href = "Admin.html";
-            return false;
-          }
-          return true;
-        } catch (error) {
-          console.error("Erreur lors du décodage du token :", error);
-          alert("Token invalide ou expiré.");
-          window.location.href = "Admin.html";
-          return false;
-        }
-      }
-
-      // Déconnexion de l'utilisateur
-      function logout() {
-        localStorage.removeItem("adminToken");
-        window.location.href = "Admin.html";
-      }
-
-      // Initialisation de la page
-      document.addEventListener("DOMContentLoaded", () => {
-        if (checkAdminToken()) {
-          document.querySelector(".container").style.display = "block";
-
-          // Gestion du bouton de déconnexion
-          document
-            .getElementById("logoutBtn")
-            .addEventListener("click", logout);
-
-          // Gestion des modals
-          const modals = document.querySelectorAll(".modal");
-          modals.forEach((modal) => {
-            const closeBtn = modal.querySelector(".close");
-            closeBtn.onclick = () => {
-              modal.style.display = "none";
-            };
-            window.onclick = (event) => {
-              if (event.target === modal) {
-                modal.style.display = "none";
-              }
-            };
-          });
-
-          // Affichage des membres avec commentaires
-          document
-            .getElementById("showMembersWithComments")
-            .addEventListener("click", async () => {
-              try {
-                const response = await fetch(
-                  "https://backendestrappes.fr/protected/import/entries-with-comments",
-                  {
-                    method: "GET",
-                    headers: {
-                      "Content-Type": "application/json",
-                      Authorization: `Bearer ${localStorage.getItem(
-                        "adminToken"
-                      )}`,
-                    },
-                  }
-                );
-                const data = await response.json();
-                const membersList = document.getElementById(
-                  "membersWithCommentsList"
-                );
-                if (membersList) {
-                  membersList.innerHTML = "";
-                  data.members.forEach((member) => {
-                    const row = document.createElement("tr");
-                    row.innerHTML = `
-                  <td>${member.lastName}</td>
-                  <td>${member.firstName}</td>
-                  <td>${member.comments.join("<br>")}</td>
-                `;
-                    membersList.appendChild(row);
-                  });
-                  document.getElementById(
-                    "membersWithCommentsModal"
-                  ).style.display = "block";
-                } else {
-                  console.error(
-                    "L'élément membersWithCommentsList n'a pas été trouvé dans le DOM."
-                  );
-                }
-              } catch (error) {
-                console.error(
-                  "Erreur lors de la récupération des membres avec commentaires:",
-                  error
-                );
-              }
-            });
-
-          // Gestion des acces au lien de la navbar
-          const token = localStorage.getItem("adminToken");
-          const decoded = jwt_decode(token);
-          const role = decoded.role;
-
-          document.querySelectorAll(".restricted-link").forEach((link) => {
-            const allowedRoles = link.getAttribute("data-roles");
-            if (!allowedRoles) return; // pas de restriction
-
-            const allowedList = allowedRoles.split(",").map((r) => r.trim());
-            if (!allowedList.includes(role)) {
-              link.classList.add("disabled-link");
-              link.addEventListener("click", function (e) {
-                e.preventDefault();
-                alert("Accès réservé aux rôles : " + allowedList.join(", "));
-              });
-            }
-          });
-        }
-      });
-    </script>
     <script src="./FichiersJS/admin-payments-members.js"></script>
   </body>
 </html>

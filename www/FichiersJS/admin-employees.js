@@ -1,35 +1,151 @@
-// ----------------------------
-// VARIABLES GLOBALES
-// ----------------------------
-let allEmployees = [];
-let currentPage = 1;
-const limit = 10; // Nombre d'éléments par page
-let sortOrder = 'asc'; // Variable pour suivre l'ordre de tri
+/**
+ * admin-employees.js
+ * Script principal pour la gestion des employés
+ * Ce fichier gère le chargement, l'ajout, la modification et la suppression des employés
+ * ainsi que le filtrage, la pagination et l'affichage des détails
+ */
 
-// ----------------------------
-// INITIALISATION ET ÉVÉNEMENTS
-// ----------------------------
+// ======================================
+// VARIABLES GLOBALES
+// ======================================
+let allEmployees = [];            // Stocke tous les employés récupérés du serveur
+let currentPage = 1;              // Page actuelle pour la pagination
+const limit = 10;                 // Nombre d'employés affichés par page
+let sortOrder = 'asc';            // Ordre de tri (ascendant ou descendant)
+let filteredEmployees = [];       // Stocke les employés après filtrage
+
+// ======================================
+// INITIALISATION ET AUTHENTIFICATION
+// ======================================
+
+/**
+ * Fonction exécutée au chargement de la page
+ * Initialise tous les événements et vérifie l'authentification
+ */
 window.onload = function () {
-  loadEmployees();
-  
+  // Vérifier l'authentification avant d'afficher le contenu
+  if (checkAdminToken()) {
+    document.querySelector(".container").style.display = "block";
+
+    // Gestion du bouton de déconnexion
+    document.getElementById("logoutBtn").addEventListener("click", logout);
+
+    // Configuration des modals
+    setupModals();
+
+    // Gestion des accès aux liens de la navbar
+    setupNavbarAccess();
+
+    // Initialiser les écouteurs d'événements
+    setupEventListeners();
+
+    // Charger les employés
+    loadEmployees();
+  }
+};
+
+/**
+ * Vérifie si l'utilisateur est connecté avec un token d'administrateur valide
+ * @return {boolean} true si le token est valide, false sinon
+ */
+function checkAdminToken() {
+  const adminToken = localStorage.getItem("adminToken");
+  if (!adminToken) {
+    alert("Vous devez être connecté en tant qu'administrateur pour accéder à cette page.");
+    window.location.href = "Admin.html";
+    return false;
+  }
+
+  try {
+    const decodedToken = jwt_decode(adminToken);
+    const role = decodedToken.role;
+    if (role !== "admin" && role !== "superadmin") {
+      alert("Accès refusé : rôle insuffisant.");
+      window.location.href = "Admin.html";
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error("Erreur lors du décodage du token :", error);
+    alert("Token invalide ou expiré.");
+    window.location.href = "Admin.html";
+    return false;
+  }
+}
+
+/**
+ * Déconnecte l'utilisateur en supprimant le token et redirigeant vers la page de connexion
+ */
+function logout() {
+  localStorage.removeItem("adminToken");
+  window.location.href = "Admin.html";
+}
+
+/**
+ * Configure les modals (fenêtres modales) pour la fermeture
+ */
+function setupModals() {
+  const modals = document.querySelectorAll(".modal");
+  modals.forEach((modal) => {
+    const closeBtn = modal.querySelector(".close");
+    closeBtn.onclick = () => {
+      modal.style.display = "none";
+    };
+  });
+
+  // Fermer les modals quand on clique en dehors
+  window.onclick = function(event) {
+    if (event.target.classList.contains("modal")) {
+      event.target.style.display = "none";
+    }
+  };
+}
+
+/**
+ * Configure les accès aux liens de la navbar selon le rôle de l'utilisateur
+ */
+function setupNavbarAccess() {
+  const token = localStorage.getItem("adminToken");
+  const decoded = jwt_decode(token);
+  const role = decoded.role;
+
+  document.querySelectorAll(".restricted-link").forEach((link) => {
+    const allowedRoles = link.getAttribute("data-roles");
+    if (!allowedRoles) return; // pas de restriction
+
+    const allowedList = allowedRoles.split(",").map((r) => r.trim());
+    if (!allowedList.includes(role)) {
+      link.classList.add("disabled-link");
+      link.addEventListener("click", function (e) {
+        e.preventDefault();
+        alert("Accès réservé aux rôles : " + allowedList.join(", "));
+      });
+    }
+  });
+}
+
+/**
+ * Initialise tous les écouteurs d'événements de la page
+ */
+function setupEventListeners() {
   // Écouteurs d'événements pour les filtres
   document.getElementById("searchInput").addEventListener("input", applyFilters);
   document.getElementById("contractStatusFilter").addEventListener("change", applyFilters);
   document.getElementById("positionFilter").addEventListener("change", applyFilters);
-  
+
   // Écouteurs d'événements pour les formulaires
   document.getElementById("addEmployeeForm").addEventListener("submit", addEmployee);
   document.getElementById("editEmployeeForm").addEventListener("submit", updateEmployee);
- 
+  document.getElementById("recordSalaryForm").addEventListener("submit", recordSalary);
+
   // Écouteurs d'événements pour les champs de salaire
   document.getElementById("salaryType").addEventListener("change", function() {
     updateAddEmployeeSalaryFields(this.value);
   });
-  
+
   document.getElementById("editSalaryType").addEventListener("change", function() {
     updateSalaryFields(this.value);
   });
-
 
   // Écouteurs pour les champs de salaire du formulaire d'édition
   document.getElementById("editMonthlySalary").addEventListener("input", function() {
@@ -39,44 +155,40 @@ window.onload = function () {
   document.getElementById("editHourlyRate").addEventListener("input", function() {
     document.getElementById("editMonthlySalary").value = "";
   });
-  
-  // Gestion des clics en dehors des modals pour les fermer
-  window.onclick = function(event) {
-    if (event.target == document.getElementById("employeeDetailsModal")) {
-      closeModal();
-    }
-    if (event.target == document.getElementById("addEmployeeModal")) {
-      closeAddEmployeeModal();
-    }
-    if (event.target == document.getElementById("editEmployeeModal")) {
-      closeEditEmployeeModal();
-    }
-  };
-};
+}
 
-// ----------------------------
+// ======================================
 // GESTION DES ONGLETS
-// ----------------------------
+// ======================================
+
+/**
+ * Affiche un onglet et cache les autres
+ * @param {string} tabId - L'ID de l'onglet à afficher
+ */
 function showTab(tabId) {
   // Cacher tous les onglets
   document.querySelectorAll(".tab-content").forEach((tab) => {
     tab.classList.add("hidden");
   });
-  
+
   // Afficher l'onglet sélectionné
   document.getElementById(tabId).classList.remove("hidden");
-  
+
   // Mettre à jour les boutons d'onglet
   document.querySelectorAll(".tab-button").forEach((button) => {
     button.classList.remove("active");
   });
-  
+
   document.querySelector(`[onclick="showTab('${tabId}')"]`).classList.add("active");
 }
 
-// ----------------------------
+// ======================================
 // CHARGEMENT ET FILTRAGE DES DONNÉES
-// ----------------------------
+// ======================================
+
+/**
+ * Charge les employés depuis le serveur
+ */
 async function loadEmployees() {
   try {
     const queryParams = new URLSearchParams();
@@ -97,29 +209,35 @@ async function loadEmployees() {
         },
       }
     );
-    
+
     if (!response.ok) throw new Error("Erreur lors du chargement des employés");
-    
+
     allEmployees = await response.json();
-    updatePositionFilter();
-    updatePositionsSelect();
-    applyFilters();
-    updatePaginationControls();
+    updatePositionFilter();    // Mettre à jour les options du filtre de position
+    updatePositionsSelect();   // Mettre à jour les options du select de positions
+    applyFilters();            // Appliquer les filtres par défaut
+    updatePaginationControls(); // Mettre à jour les contrôles de pagination
   } catch (error) {
     console.error("Erreur de chargement des employés:", error);
+    alert("Impossible de charger la liste des employés");
   }
 }
 
+/**
+ * Met à jour le filtre de position avec les positions disponibles
+ */
 function updatePositionFilter() {
   const positionFilter = document.getElementById("positionFilter");
   const uniquePositions = new Set();
 
+  // Collecter toutes les positions uniques
   allEmployees.forEach((employee) => {
     employee.positions.forEach((position) => {
       uniquePositions.add(position);
     });
   });
 
+  // Mettre à jour les options du select
   positionFilter.innerHTML = '<option value="">Toutes les positions</option>';
   uniquePositions.forEach((position) => {
     const option = document.createElement("option");
@@ -129,11 +247,18 @@ function updatePositionFilter() {
   });
 }
 
+/**
+ * Change l'ordre de tri et applique les filtres
+ * @param {string} field - Le champ sur lequel trier
+ */
 function toggleSort(field) {
   sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
   applyFilters();
 }
 
+/**
+ * Applique les filtres aux employés et met à jour l'affichage
+ */
 function applyFilters() {
   const searchQuery = document
     .getElementById("searchInput")
@@ -143,7 +268,7 @@ function applyFilters() {
   const position = document.getElementById("positionFilter").value;
 
   // Filtrer les employés selon les critères
-  const filteredEmployees = allEmployees.filter((employee) => {
+  filteredEmployees = allEmployees.filter((employee) => {
     const matchesSearch =
       !searchQuery ||
       employee.firstName.toLowerCase().includes(searchQuery) ||
@@ -166,20 +291,24 @@ function applyFilters() {
     }
   });
 
-  // Stocker le résultat filtré dans une variable globale
-  window.filteredEmployees = filteredEmployees;
-
+  // Paginer les résultats
   const startIndex = (currentPage - 1) * limit;
   const endIndex = startIndex + limit;
   const paginatedEmployees = filteredEmployees.slice(startIndex, endIndex);
 
+  // Afficher les employés et mettre à jour la pagination
   displayEmployees(paginatedEmployees);
   updatePaginationControls(filteredEmployees.length);
 }
 
-// ----------------------------
+// ======================================
 // AFFICHAGE DES DONNÉES
-// ----------------------------
+// ======================================
+
+/**
+ * Affiche les employés dans le tableau
+ * @param {Array} employees - Liste des employés à afficher
+ */
 function displayEmployees(employees) {
   const tbody = document.getElementById("employeesTableBody");
   tbody.innerHTML = "";
@@ -202,35 +331,46 @@ function displayEmployees(employees) {
   });
 }
 
-// ----------------------------
+// ======================================
 // GESTION DE LA PAGINATION
-// ----------------------------
+// ======================================
+
+/**
+ * Met à jour les contrôles de pagination
+ * @param {number} filteredCount - Nombre d'employés filtrés
+ */
 function updatePaginationControls(filteredCount = null) {
   const pageInfo = document.getElementById("pageInfo");
-  // Utilisez le nombre d'employés filtrés plutôt que tous les employés
-  const count = filteredCount !== null ? filteredCount : (window.filteredEmployees ? window.filteredEmployees.length : allEmployees.length);
+  // Utiliser le nombre d'employés filtrés
+  const count = filteredCount !== null ? filteredCount : filteredEmployees.length;
   const totalPages = Math.ceil(count / limit);
-  
+
   // Assurer que currentPage ne dépasse pas le nombre total de pages
   if (currentPage > totalPages && totalPages > 0) {
     currentPage = totalPages;
   }
-  
+
   pageInfo.innerHTML = `Page ${currentPage} sur ${totalPages}`;
 
+  // Mettre à jour l'état des boutons
   const paginationButtons = document.querySelectorAll(".pagination-controls .btn-secondary");
-  paginationButtons[0].disabled = currentPage === 1; // First page
-  paginationButtons[1].disabled = currentPage === 1; // Previous page
+  paginationButtons[0].disabled = currentPage === 1;                        // First page
+  paginationButtons[1].disabled = currentPage === 1;                        // Previous page
   paginationButtons[2].disabled = currentPage === totalPages || totalPages === 0; // Next page
   paginationButtons[3].disabled = currentPage === totalPages || totalPages === 0; // Last page
 }
 
-// Mettre à jour les fonctions de navigation pour utiliser les employés filtrés
+/**
+ * Aller à la première page
+ */
 function firstPage() {
   currentPage = 1;
   applyFilters();
 }
 
+/**
+ * Aller à la page précédente
+ */
 function previousPage() {
   if (currentPage > 1) {
     currentPage--;
@@ -238,38 +378,51 @@ function previousPage() {
   }
 }
 
+/**
+ * Aller à la page suivante
+ */
 function nextPage() {
-  const count = window.filteredEmployees ? window.filteredEmployees.length : allEmployees.length;
-  const totalPages = Math.ceil(count / limit);
-  
+  const totalPages = Math.ceil(filteredEmployees.length / limit);
+
   if (currentPage < totalPages) {
     currentPage++;
     applyFilters();
   }
 }
 
+/**
+ * Aller à la dernière page
+ */
 function lastPage() {
-  const count = window.filteredEmployees ? window.filteredEmployees.length : allEmployees.length;
-  currentPage = Math.ceil(count / limit);
+  currentPage = Math.ceil(filteredEmployees.length / limit);
   applyFilters();
 }
 
-
-// ----------------------------
+// ======================================
 // FORMATAGE DES DONNÉES
-// ----------------------------
+// ======================================
+
+/**
+ * Formate une date au format JJ/MM/AAAA
+ * @param {string} dateString - Date à formater
+ * @return {string} Date formatée
+ */
 function formatDate(dateString) {
   const date = new Date(dateString);
   const day = String(date.getDate()).padStart(2, '0');
-  const month = String(date.getMonth() + 1).padStart(2, '0'); // Les mois sont indexés à partir de 0
+  const month = String(date.getMonth() + 1).padStart(2, '0');
   const year = date.getFullYear();
   return `${day}/${month}/${year}`;
 }
 
-// ----------------------------
+// ======================================
 // GESTION DES DÉTAILS D'UN EMPLOYÉ
-// ----------------------------
+// ======================================
 
+/**
+ * Affiche les détails d'un employé
+ * @param {string} employeeId - ID de l'employé
+ */
 async function showEmployeeDetails(employeeId) {
   try {
     const response = await fetch(
@@ -302,15 +455,21 @@ async function showEmployeeDetails(employeeId) {
       <div><strong>Type de salaire:</strong> ${employee.salaryType ? employee.salaryType : "Non défini"}</div>
     `;
 
+    // Charger l'historique des paiements
     await showPaymentHistory(employeeId);
 
+    // Afficher le modal
     document.getElementById("employeeDetailsModal").style.display = "flex";
   } catch (error) {
     console.error("Erreur de chargement des détails:", error);
+    alert("Impossible de charger les détails de l'employé");
   }
 }
 
-
+/**
+ * Affiche l'historique des paiements d'un employé
+ * @param {string} employeeId - ID de l'employé
+ */
 async function showPaymentHistory(employeeId) {
   const paymentHistoryBody = document.getElementById("paymentHistoryBody");
   paymentHistoryBody.innerHTML = "";
@@ -353,25 +512,39 @@ async function showPaymentHistory(employeeId) {
   }
 }
 
+/**
+ * Ferme le modal des détails d'un employé
+ */
 function closeModal() {
   document.getElementById("employeeDetailsModal").style.display = "none";
 }
 
-// ----------------------------
+// ======================================
 // GESTION DES MODALS D'AJOUT D'EMPLOYÉ
-// ----------------------------
+// ======================================
+
+/**
+ * Affiche le modal d'ajout d'un employé
+ */
 function showAddEmployeeModal() {
   updatePositionsSelect();
   document.getElementById("addEmployeeModal").style.display = "flex";
-  // Initialiser les champs de salaire en fonction de la valeur par défaut du type de salaire
+  // Initialiser les champs de salaire en fonction du type de salaire par défaut
   updateAddEmployeeSalaryFields(document.getElementById("salaryType").value);
 }
 
+/**
+ * Ferme le modal d'ajout d'un employé
+ */
 function closeAddEmployeeModal() {
   document.getElementById("addEmployeeModal").style.display = "none";
   document.getElementById("addEmployeeForm").reset();
 }
 
+/**
+ * Met à jour les champs de salaire en fonction du type de salaire choisi
+ * @param {string} salaryType - Type de salaire (Mensuel ou Horaire)
+ */
 function updateAddEmployeeSalaryFields(salaryType) {
   const monthlySalaryField = document.getElementById("monthlySalary");
   const hourlyRateField = document.getElementById("hourlyRate");
@@ -393,6 +566,9 @@ function updateAddEmployeeSalaryFields(salaryType) {
   }
 }
 
+/**
+ * Met à jour les options du select de positions
+ */
 function updatePositionsSelect() {
   const positionsSelect = document.getElementById("positions");
   const uniquePositions = new Set();
@@ -418,6 +594,10 @@ function updatePositionsSelect() {
   });
 }
 
+/**
+ * Ajoute un nouvel employé
+ * @param {Event} event - Événement du formulaire
+ */
 async function addEmployee(event) {
   event.preventDefault();
   const form = event.target;
@@ -428,7 +608,7 @@ async function addEmployee(event) {
   if (employeeData.birthDate) {
     employeeData.birthDate = formatDate(employeeData.birthDate);
   }
-  
+
   try {
     const response = await fetch("https://backendestrappes.fr/protected/employees", {
       method: "POST",
@@ -438,7 +618,7 @@ async function addEmployee(event) {
       },
       body: JSON.stringify(employeeData),
     });
-    
+
     if (!response.ok) {
       // Essayer de récupérer le message d'erreur du serveur
       const errorData = await response.json().catch(() => null);
@@ -450,7 +630,7 @@ async function addEmployee(event) {
         throw new Error("Erreur lors de l'ajout de l'employé");
       }
     }
-    
+
     alert("Employé ajouté avec succès");
     closeAddEmployeeModal();
     loadEmployees();
@@ -460,10 +640,14 @@ async function addEmployee(event) {
   }
 }
 
-// ----------------------------
+// ======================================
 // GESTION DES MODALS DE MODIFICATION D'EMPLOYÉ
-// ----------------------------
+// ======================================
 
+/**
+ * Affiche le modal de modification d'un employé
+ * @param {string} employeeId - ID de l'employé à modifier
+ */
 async function editEmployee(employeeId) {
   try {
     const response = await fetch(`https://backendestrappes.fr/protected/employees/${employeeId}`, {
@@ -477,6 +661,7 @@ async function editEmployee(employeeId) {
 
     const employee = await response.json();
 
+    // Remplir le formulaire avec les données de l'employé
     document.getElementById("editEmployeeId").value = employee._id;
     document.getElementById("editLicenseNumber").value = employee.licenseNumber;
     document.getElementById("editEmail").value = employee.email;
@@ -485,6 +670,7 @@ async function editEmployee(employeeId) {
     document.getElementById("editContractStatus").value = employee.contractStatus;
     document.getElementById("editSalaryType").value = employee.salaryType;
 
+    // Mettre à jour les champs de salaire
     updateSalaryFields(employee.salaryType, employee.monthlySalary, employee.hourlyRate);
 
     // Afficher le modal
@@ -495,12 +681,20 @@ async function editEmployee(employeeId) {
   }
 }
 
-
+/**
+ * Ferme le modal de modification d'un employé
+ */
 function closeEditEmployeeModal() {
   document.getElementById("editEmployeeModal").style.display = "none";
   document.getElementById("editEmployeeForm").reset();
 }
 
+/**
+ * Met à jour les champs de salaire dans le formulaire d'édition
+ * @param {string} salaryType - Type de salaire (Mensuel ou Horaire)
+ * @param {number} monthlySalary - Salaire mensuel (optionnel)
+ * @param {number} hourlyRate - Taux horaire (optionnel)
+ */
 function updateSalaryFields(salaryType, monthlySalary = "", hourlyRate = "") {
   const monthlySalaryField = document.getElementById("editMonthlySalary");
   const hourlyRateField = document.getElementById("editHourlyRate");
@@ -518,7 +712,10 @@ function updateSalaryFields(salaryType, monthlySalary = "", hourlyRate = "") {
   }
 }
 
-
+/**
+ * Met à jour un employé
+ * @param {Event} event - Événement du formulaire
+ */
 async function updateEmployee(event) {
   event.preventDefault();
   const form = event.target;
@@ -527,6 +724,7 @@ async function updateEmployee(event) {
   const employeeId = employeeData.id;
   delete employeeData.id;
 
+  // Convertir la chaîne de positions en tableau
   employeeData.positions = employeeData.positions.split(",").map((position) => position.trim());
 
   // Réinitialiser les champs de salaire en fonction du type de salaire sélectionné
@@ -557,11 +755,23 @@ async function updateEmployee(event) {
   }
 }
 
+/**
+ * Fonction pour enregistrer un salaire (utilisée par le formulaire)
+ * @param {Event} event - Événement du formulaire
+ */
+function recordSalary(event) {
+  event.preventDefault();
+  // Implémentation si nécessaire
+}
 
-
-// ----------------------------
+// ======================================
 // GESTION DE LA SUPPRESSION D'EMPLOYÉ
-// ----------------------------
+// ======================================
+
+/**
+ * Supprime un employé
+ * @param {string} employeeId - ID de l'employé à supprimer
+ */
 async function deleteEmployee(employeeId) {
   if (confirm("Êtes-vous sûr de vouloir supprimer cet employé ?")) {
     try {
@@ -574,10 +784,10 @@ async function deleteEmployee(employeeId) {
           },
         }
       );
-      
+
       if (!response.ok)
         throw new Error("Erreur lors de la suppression de l'employé");
-      
+
       alert("Employé supprimé avec succès");
       loadEmployees();
     } catch (error) {
@@ -587,17 +797,14 @@ async function deleteEmployee(employeeId) {
   }
 }
 
-
-
-
-
-
-
-// ----------------------------
+// ======================================
 // GESTION D'AJOUT DE SALAIRE
-// ----------------------------
+// ======================================
 
-//Fonction pour gerer le paiement du salaire
+/**
+ * Enregistre le paiement du salaire d'un employé
+ * @param {string} employeeId - ID de l'employé
+ */
 async function paySalary(employeeId) {
   try {
     // Récupérer d'abord les détails de l'employé pour déterminer le type de salaire
@@ -675,4 +882,3 @@ async function paySalary(employeeId) {
     alert("Erreur lors du paiement du salaire");
   }
 }
-

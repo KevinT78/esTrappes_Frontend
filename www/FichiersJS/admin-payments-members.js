@@ -1,39 +1,133 @@
-// ----------------------------
-// FONCTIONS DE GESTION DES MODALS
-// ----------------------------
+/**
+ * admin-payments-members.js
+ * Script principal pour la gestion des cotisations des membres
+ * Ce fichier gère le chargement, l'ajout, la modification et la suppression des membres
+ * ainsi que le filtrage, la pagination et l'affichage des détails
+ */
 
-function showConfirmReminderModal() {
-  document.getElementById("confirmReminderModal").style.display = "block";
-}
-
-function closeConfirmReminderModal() {
-  document.getElementById("confirmReminderModal").style.display = "none";
-}
-
-function confirmSendReminders() {
-  closeConfirmReminderModal();
-  sendPaymentReminders();
-}
-
-function closeConfirmAddLicenseCostModal() {
-  document.getElementById("confirmAddLicenseCostModal").style.display = "none";
-}
-
-// ----------------------------
+// ======================================
 // VARIABLES GLOBALES
-// ----------------------------
+// ======================================
+let allMembers = [];            // Stocke tous les membres récupérés du serveur
+let currentPage = 1;            // Page actuelle pour la pagination
+const limit = 10;               // Nombre de membres affichés par page
+let sortOrder = 'asc';           // Ordre de tri (ascendant ou descendant)
+let filteredMembers = [];        // Stocke les membres après filtrage
 
-let allMembers = [];
-let currentPage = 1;
-const limit = 10; // Nombre d'éléments par page
+// ======================================
+// INITIALISATION ET AUTHENTIFICATION
+// ======================================
 
-// ----------------------------
-// INITIALISATION ET ÉVÉNEMENTS
-// ----------------------------
-
+/**
+ * Fonction exécutée au chargement de la page
+ * Initialise tous les événements et vérifie l'authentification
+ */
 window.onload = function () {
-  loadMembers();
+  // Vérifier l'authentification avant d'afficher le contenu
+  if (checkAdminToken()) {
+    document.querySelector(".container").style.display = "block";
 
+    // Gestion du bouton de déconnexion
+    document.getElementById("logoutBtn").addEventListener("click", logout);
+
+    // Configuration des modals
+    setupModals();
+
+    // Gestion des accès aux liens de la navbar
+    setupNavbarAccess();
+
+    // Initialiser les écouteurs d'événements
+    setupEventListeners();
+
+    // Charger les membres
+    loadMembers();
+  }
+};
+
+/**
+ * Vérifie si l'utilisateur est connecté avec un token d'administrateur valide
+ * @return {boolean} true si le token est valide, false sinon
+ */
+function checkAdminToken() {
+  const adminToken = localStorage.getItem("adminToken");
+  if (!adminToken) {
+    alert("Vous devez être connecté en tant qu'administrateur pour accéder à cette page.");
+    window.location.href = "Admin.html";
+    return false;
+  }
+
+  try {
+    const decodedToken = jwt_decode(adminToken);
+    const role = decodedToken.role;
+    if (role !== "admin" && role !== "superadmin") {
+      alert("Accès refusé : rôle insuffisant.");
+      window.location.href = "Admin.html";
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error("Erreur lors du décodage du token :", error);
+    alert("Token invalide ou expiré.");
+    window.location.href = "Admin.html";
+    return false;
+  }
+}
+
+/**
+ * Déconnecte l'utilisateur en supprimant le token et redirigeant vers la page de connexion
+ */
+function logout() {
+  localStorage.removeItem("adminToken");
+  window.location.href = "Admin.html";
+}
+
+/**
+ * Configure les modals (fenêtres modales) pour la fermeture
+ */
+function setupModals() {
+  const modals = document.querySelectorAll(".modal");
+  modals.forEach((modal) => {
+    const closeBtn = modal.querySelector(".close");
+    closeBtn.onclick = () => {
+      modal.style.display = "none";
+    };
+  });
+
+  // Fermer les modals quand on clique en dehors
+  window.onclick = function(event) {
+    if (event.target.classList.contains("modal")) {
+      event.target.style.display = "none";
+    }
+  };
+}
+
+/**
+ * Configure les accès aux liens de la navbar selon le rôle de l'utilisateur
+ */
+function setupNavbarAccess() {
+  const token = localStorage.getItem("adminToken");
+  const decoded = jwt_decode(token);
+  const role = decoded.role;
+
+  document.querySelectorAll(".restricted-link").forEach((link) => {
+    const allowedRoles = link.getAttribute("data-roles");
+    if (!allowedRoles) return; // pas de restriction
+
+    const allowedList = allowedRoles.split(",").map((r) => r.trim());
+    if (!allowedList.includes(role)) {
+      link.classList.add("disabled-link");
+      link.addEventListener("click", function (e) {
+        e.preventDefault();
+        alert("Accès réservé aux rôles : " + allowedList.join(", "));
+      });
+    }
+  });
+}
+
+/**
+ * Initialise tous les écouteurs d'événements de la page
+ */
+function setupEventListeners() {
   // Écouteurs d'événements pour les filtres
   document.getElementById("searchInput").addEventListener("input", applyFilters);
   document.getElementById("paymentStatusFilter").addEventListener("change", applyFilters);
@@ -69,12 +163,40 @@ window.onload = function () {
       closePaymentModal();
     }
   };
-};
+}
 
-// ----------------------------
+// ======================================
+// GESTION DES ONGLETS
+// ======================================
+
+/**
+ * Affiche un onglet et cache les autres
+ * @param {string} tabId - L'ID de l'onglet à afficher
+ */
+function showTab(tabId) {
+  // Cacher tous les onglets
+  document.querySelectorAll(".tab-content").forEach((tab) => {
+    tab.classList.add("hidden");
+  });
+
+  // Afficher l'onglet sélectionné
+  document.getElementById(tabId).classList.remove("hidden");
+
+  // Mettre à jour les boutons d'onglet
+  document.querySelectorAll(".tab-button").forEach((button) => {
+    button.classList.remove("active");
+  });
+
+  document.querySelector(`[onclick="showTab('${tabId}')"]`).classList.add("active");
+}
+
+// ======================================
 // CHARGEMENT ET FILTRAGE DES DONNÉES
-// ----------------------------
+// ======================================
 
+/**
+ * Charge les membres depuis le serveur
+ */
 async function loadMembers() {
   try {
     const queryParams = new URLSearchParams();
@@ -108,6 +230,9 @@ async function loadMembers() {
   }
 }
 
+/**
+ * Applique les filtres aux membres et met à jour l'affichage
+ */
 function applyFilters() {
   const searchQuery = document.getElementById("searchInput").value.trim().toLowerCase();
   const paymentStatus = document.getElementById("paymentStatusFilter").value;
@@ -115,7 +240,7 @@ function applyFilters() {
   const activeFilter = document.getElementById("activeFilter").value;
 
   // Filtrer les membres selon les critères
-  let filteredMembers = allMembers.filter(member => {
+  filteredMembers = allMembers.filter(member => {
     const matchesSearch = !searchQuery ||
       member.firstName.toLowerCase().includes(searchQuery) ||
       member.lastName.toLowerCase().includes(searchQuery);
@@ -135,28 +260,33 @@ function applyFilters() {
     }
   });
 
-  // Stocker le résultat filtré dans une variable globale
-  window.filteredMembers = filteredMembers;
-
+  // Paginer les résultats
   const startIndex = (currentPage - 1) * limit;
   const endIndex = startIndex + limit;
   const paginatedMembers = filteredMembers.slice(startIndex, endIndex);
 
+  // Afficher les membres et mettre à jour la pagination
   displayMembers(paginatedMembers);
   updatePaginationControls(filteredMembers.length);
 }
 
-let sortOrder = 'asc'; // Variable pour suivre l'ordre de tri
-
+/**
+ * Change l'ordre de tri et applique les filtres
+ * @param {string} field - Le champ sur lequel trier
+ */
 function toggleSort(field) {
   sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
   applyFilters();
 }
 
-// ----------------------------
+// ======================================
 // AFFICHAGE DES DONNÉES
-// ----------------------------
+// ======================================
 
+/**
+ * Affiche les membres dans le tableau
+ * @param {Array} members - Liste des membres à afficher
+ */
 function displayMembers(members) {
   const tbody = document.getElementById("membersTableBody");
   tbody.innerHTML = "";
@@ -187,13 +317,17 @@ function displayMembers(members) {
   });
 }
 
-// ----------------------------
+// ======================================
 // GESTION DE LA PAGINATION
-// ----------------------------
+// ======================================
 
+/**
+ * Met à jour les contrôles de pagination
+ * @param {number} filteredCount - Nombre de membres filtrés
+ */
 function updatePaginationControls(filteredCount = null) {
   const pageInfo = document.getElementById("pageInfo");
-  // Utilisez le nombre de membres filtrés plutôt que tous les membres
+  // Utiliser le nombre de membres filtrés
   const count = filteredCount !== null ? filteredCount : (window.filteredMembers ? window.filteredMembers.length : allMembers.length);
   const totalPages = Math.ceil(count / limit);
 
@@ -204,6 +338,7 @@ function updatePaginationControls(filteredCount = null) {
 
   pageInfo.innerHTML = `Page ${currentPage} sur ${totalPages}`;
 
+  // Mettre à jour l'état des boutons
   const paginationButtons = document.querySelectorAll(".pagination-controls .btn-secondary");
   paginationButtons[0].disabled = currentPage === 1; // First page
   paginationButtons[1].disabled = currentPage === 1; // Previous page
@@ -211,11 +346,17 @@ function updatePaginationControls(filteredCount = null) {
   paginationButtons[3].disabled = currentPage === totalPages || totalPages === 0; // Last page
 }
 
+/**
+ * Aller à la première page
+ */
 function firstPage() {
   currentPage = 1;
   applyFilters();
 }
 
+/**
+ * Aller à la page précédente
+ */
 function previousPage() {
   if (currentPage > 1) {
     currentPage--;
@@ -223,9 +364,11 @@ function previousPage() {
   }
 }
 
+/**
+ * Aller à la page suivante
+ */
 function nextPage() {
-  const count = window.filteredMembers ? window.filteredMembers.length : allMembers.length;
-  const totalPages = Math.ceil(count / limit);
+  const totalPages = Math.ceil(filteredMembers.length / limit);
 
   if (currentPage < totalPages) {
     currentPage++;
@@ -233,16 +376,23 @@ function nextPage() {
   }
 }
 
+/**
+ * Aller à la dernière page
+ */
 function lastPage() {
-  const count = window.filteredMembers ? window.filteredMembers.length : allMembers.length;
-  currentPage = Math.ceil(count / limit);
+  currentPage = Math.ceil(filteredMembers.length / limit);
   applyFilters();
 }
 
-// ----------------------------
+// ======================================
 // FORMATAGE DES DONNÉES
-// ----------------------------
+// ======================================
 
+/**
+ * Formate une date au format JJ/MM/AAAA
+ * @param {string} dateString - Date à formater
+ * @return {string} Date formatée
+ */
 function formatDate(dateString) {
   const date = new Date(dateString);
   const day = String(date.getDate()).padStart(2, '0');
@@ -251,13 +401,16 @@ function formatDate(dateString) {
   return `${day}/${month}/${year}`;
 }
 
-// ----------------------------
+// ======================================
 // GESTION DES DÉTAILS D'UN MEMBRE
-// ----------------------------
+// ======================================
 
+/**
+ * Affiche les détails d'un membre
+ * @param {string} memberId - ID du membre
+ */
 async function showMemberDetails(memberId) {
   try {
-
     const statusTranslations = {
       paid: "Payé",
       unpaid: "Non payé",
@@ -305,23 +458,36 @@ async function showMemberDetails(memberId) {
   }
 }
 
+/**
+ * Ferme le modal des détails d'un membre
+ */
 function closeModal() {
   document.getElementById("memberDetailsModal").style.display = "none";
 }
 
-// ----------------------------
+// ======================================
 // GESTION DES MODALS D'AJOUT DE MEMBRE
-// ----------------------------
+// ======================================
 
+/**
+ * Affiche le modal d'ajout d'un membre
+ */
 function showAddMemberModal() {
   document.getElementById("addMemberModal").style.display = "flex";
 }
 
+/**
+ * Ferme le modal d'ajout d'un membre
+ */
 function closeAddMemberModal() {
   document.getElementById("addMemberModal").style.display = "none";
   document.getElementById("addMemberForm").reset();
 }
 
+/**
+ * Ajoute un nouveau membre
+ * @param {Event} event - Événement du formulaire
+ */
 async function addMember(event) {
   event.preventDefault();
   const form = event.target;
@@ -352,10 +518,14 @@ async function addMember(event) {
   }
 }
 
-// ----------------------------
+// ======================================
 // GESTION DES MODALS DE MODIFICATION DE MEMBRE
-// ----------------------------
+// ======================================
 
+/**
+ * Affiche le modal de modification d'un membre
+ * @param {string} memberId - ID du membre à modifier
+ */
 async function editMember(memberId) {
   try {
     const response = await fetch(`https://backendestrappes.fr/protected/members/${memberId}`, {
@@ -383,11 +553,18 @@ async function editMember(memberId) {
   }
 }
 
+/**
+ * Ferme le modal de modification d'un membre
+ */
 function closeEditMemberModal() {
   document.getElementById("editMemberModal").style.display = "none";
   document.getElementById("editMemberForm").reset();
 }
 
+/**
+ * Met à jour un membre
+ * @param {Event} event - Événement du formulaire
+ */
 async function updateMember(event) {
   event.preventDefault();
   const form = event.target;
@@ -415,10 +592,14 @@ async function updateMember(event) {
   }
 }
 
-// ----------------------------
+// ======================================
 // GESTION DE LA SUPPRESSION DE MEMBRE
-// ----------------------------
+// ======================================
 
+/**
+ * Supprime un membre
+ * @param {string} memberId - ID du membre à supprimer
+ */
 async function deleteMember(memberId) {
   if (confirm("Êtes-vous sûr de vouloir supprimer ce membre ?")) {
     try {
@@ -441,20 +622,31 @@ async function deleteMember(memberId) {
   }
 }
 
-// ----------------------------
+// ======================================
 // GESTION DES COÛTS SUPPLÉMENTAIRES
-// ----------------------------
+// ======================================
 
+/**
+ * Affiche le modal d'ajout d'un coût supplémentaire
+ * @param {string} memberId - ID du membre
+ */
 function showAdditionalCostModal(memberId) {
   document.getElementById("memberIdForCost").value = memberId;
   document.getElementById("additionalCostModal").style.display = "flex";
 }
 
+/**
+ * Ferme le modal d'ajout d'un coût supplémentaire
+ */
 function closeAdditionalCostModal() {
   document.getElementById("additionalCostModal").style.display = "none";
   document.getElementById("additionalCostForm").reset();
 }
 
+/**
+ * Gère l'ajout d'un coût supplémentaire
+ * @param {Event} event - Événement du formulaire
+ */
 async function handleAdditionalCost(event) {
   event.preventDefault();
   const memberId = document.getElementById("memberIdForCost").value;
@@ -483,20 +675,31 @@ async function handleAdditionalCost(event) {
   }
 }
 
-// ----------------------------
+// ======================================
 // GESTION DES PAIEMENTS
-// ----------------------------
+// ======================================
 
+/**
+ * Affiche le modal d'enregistrement d'un paiement
+ * @param {string} memberId - ID du membre
+ */
 function showPaymentModal(memberId) {
   document.getElementById("memberIdForPayment").value = memberId;
   document.getElementById("paymentModal").style.display = "flex";
 }
 
+/**
+ * Ferme le modal d'enregistrement d'un paiement
+ */
 function closePaymentModal() {
   document.getElementById("paymentModal").style.display = "none";
   document.getElementById("paymentForm").reset();
 }
 
+/**
+ * Gère l'enregistrement d'un paiement
+ * @param {Event} event - Événement du formulaire
+ */
 async function handlePayment(event) {
   event.preventDefault();
   const memberId = document.getElementById("memberIdForPayment").value;
@@ -529,10 +732,13 @@ async function handlePayment(event) {
   }
 }
 
-// ----------------------------
+// ======================================
 // GESTION DE L'IMPORTATION DES MEMBRES
-// ----------------------------
+// ======================================
 
+/**
+ * Gère l'importation des membres depuis un fichier
+ */
 document.getElementById("importMembersBtn").addEventListener("click", function () {
   document.getElementById("importFileInput").click();
 });
@@ -570,10 +776,35 @@ document.getElementById("importFileInput").addEventListener("change", async func
   }
 });
 
-// ----------------------------
+// ======================================
 // GESTION DES RAPPELS DE PAIEMENT
-// ----------------------------
+// ======================================
 
+/**
+ * Affiche le modal de confirmation d'envoi des rappels de paiement
+ */
+function showConfirmReminderModal() {
+  document.getElementById("confirmReminderModal").style.display = "block";
+}
+
+/**
+ * Ferme le modal de confirmation d'envoi des rappels de paiement
+ */
+function closeConfirmReminderModal() {
+  document.getElementById("confirmReminderModal").style.display = "none";
+}
+
+/**
+ * Confirme l'envoi des rappels de paiement
+ */
+function confirmSendReminders() {
+  closeConfirmReminderModal();
+  sendPaymentReminders();
+}
+
+/**
+ * Envoie les rappels de paiement
+ */
 async function sendPaymentReminders() {
   const sendButton = document.getElementById("sendRemindersBtn");
   const resultsDiv = document.getElementById("reminderResults");
@@ -637,13 +868,34 @@ async function sendPaymentReminders() {
   }
 }
 
+/**
+ * Ferme le modal des résultats des rappels de paiement
+ */
 function closeReminderResultsModal() {
   document.getElementById("reminderResultsModal").style.display = "none";
 }
 
-// ----------------------------
+// ======================================
 // GESTION DE L'AJUSTEMENT DU COÛT DE LA LICENCE
-// ----------------------------
+// ======================================
+
+/**
+ * Affiche le modal de confirmation d'ajustement du coût de la licence
+ */
+function showConfirmAddLicenseCostModal() {
+  document.getElementById("confirmAddLicenseCostModal").style.display = "block";
+}
+
+/**
+ * Ferme le modal de confirmation d'ajustement du coût de la licence
+ */
+function closeConfirmAddLicenseCostModal() {
+  document.getElementById("confirmAddLicenseCostModal").style.display = "none";
+}
+
+/**
+ * Confirme l'ajustement du coût de la licence
+ */
 async function confirmAddLicenseCost() {
   // Sélectionner les éléments
   const addLicenseCostBtn = document.getElementById("addLicenseCostBtn");
@@ -692,7 +944,6 @@ async function confirmAddLicenseCost() {
 
     // Récupérer et afficher les détails de l'erreur si disponibles
     const responseData = await response.json().catch(e => null);
-
     if (!response.ok) {
       console.error("Détails de l'erreur:", responseData);
       throw new Error(responseData?.message || "Erreur lors de l'ajout du coût de la licence");
