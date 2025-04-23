@@ -1,6 +1,42 @@
 document.getElementById("registrationForm").addEventListener("submit", async (e) => {
   e.preventDefault();
 
+  // Liste des domaines email interdits
+  const restrictedDomains = [
+    "@estrappes.com",
+  ];
+
+  // Fonction pour vérifier si un email est interdit
+  const isEmailRestricted = (email) => {
+    if (!email) return false;
+    const emailLower = email.toLowerCase();
+    return restrictedDomains.some(domain => emailLower.endsWith(domain));
+  };
+
+  // Vérification de l'email principal
+  const emailInput = document.getElementById("email").value;
+  if (isEmailRestricted(emailInput)) {
+    document.getElementById("errorMessage").textContent = 
+      "Les adresses email avec les domaines suivants ne sont pas autorisées : " + 
+      restrictedDomains.join(", ");
+    document.getElementById("errorMessage").style.display = "block";
+    window.scrollTo({ top: 0, behavior: 'smooth' }); // Ajout du défilement vers le haut
+    return;
+  }
+
+  // Vérification de l'email du tuteur si nécessaire
+  const tutorEmailInput = document.getElementById("tutorEmail").value;
+  const tutorGroupDisplayed = document.querySelector('.tutor-group').style.display !== 'none';
+  
+  if (tutorGroupDisplayed && isEmailRestricted(tutorEmailInput)) {
+    document.getElementById("errorMessage").textContent = 
+      "Les adresses email avec les domaines suivants ne sont pas autorisées pour les tuteurs : " + 
+      restrictedDomains.join(", ");
+    document.getElementById("errorMessage").style.display = "block";
+    window.scrollTo({ top: 0, behavior: 'smooth' }); // Ajout du défilement vers le haut
+    return;
+  }
+
   // Fonction pour compresser et convertir les images en base64
   const compressAndConvertToBase64 = async (file) => {
     if (!file) return null;
@@ -107,26 +143,29 @@ document.getElementById("registrationForm").addEventListener("submit", async (e)
       body: JSON.stringify(formData),
     });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      if (errorData.message && errorData.message.includes("email")) {
-        document.getElementById("errorMessage").textContent =
-          "Une inscription avec cet email et nom existe déjà.";
-        document.getElementById("errorMessage").style.display = "block";
-      } else {
-        throw new Error("Erreur lors de l'inscription");
-      }
-    } else {
-      document.getElementById("errorMessage").style.display = "none";
-      alert("Inscription soumise avec succès ! Elle est en attente de validation.");
-      document.getElementById("registrationForm").reset();
-    }
 
-    window.scrollTo(0, 0);
-  } catch (error) {
-    console.error("Erreur:", error);
-    alert("Une erreur est survenue lors de l'inscription. Veuillez réessayer.");
+if (!response.ok) {
+  const errorData = await response.json();
+  if (errorData.message && errorData.message.includes("email")) {
+    document.getElementById("errorMessage").textContent =
+      "Une inscription avec cet email et nom existe déjà.";
+    document.getElementById("errorMessage").style.display = "block";
+    window.scrollTo({ top: 0, behavior: 'smooth' }); // Ajout du défilement vers le haut
+  } else {
+    throw new Error("Erreur lors de l'inscription");
   }
+} else {
+  document.getElementById("errorMessage").style.display = "none";
+  alert("Inscription soumise avec succès ! Elle est en attente de validation.");
+  document.getElementById("registrationForm").reset();
+}
+
+window.scrollTo(0, 0);
+} catch (error) {
+console.error("Erreur:", error);
+alert("Une erreur est survenue lors de l'inscription. Veuillez réessayer.");
+window.scrollTo({ top: 0, behavior: 'smooth' }); // Ajout du défilement vers le haut en cas d'erreur
+}
 });
 
 // Le code pour la gestion de l'âge reste inchangé
