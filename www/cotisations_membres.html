@@ -185,6 +185,10 @@
           <button id="addLicenseCostBtn" class="btn btn-warning">
             Ajouter le coût de la licence à tous
           </button>
+          <button onclick="exportAllMemberData()" class="btn btn-success">
+            Exporter les données des membres
+          </button>
+          
           <div id="loadingIndicator" style="display: none; text-align: center">
             <p>Chargement en cours...</p>
             <div class="spinner"></div>
@@ -288,6 +292,44 @@
               <label for="category">Catégorie</label>
               <select id="category" name="category" required>
                 <!-- Options générées dynamiquement par JavaScript -->
+                <option value="Veteran">Veteran</option>
+                <option value="Senior">Senior</option>
+                <option value="Senior F">Senior F</option>
+                <option value="Senior U20">Senior U20</option>
+                <option value="Senior U20 F">Senior U20 F</option>
+                <option value="U20M">U20 M</option>
+                <option value="U20F">U20 F</option>
+                <option value="U19M">U19 M</option>
+                <option value="U19F">U19 F</option>
+                <option value="U18M">U18 M</option>
+                <option value="U18F">U18 F</option>
+                <option value="U17M">U17 M</option>
+                <option value="U17F">U17 F</option>
+                <option value="U16M">U16 M</option>
+                <option value="U16F">U16 F</option>
+                <option value="U15M">U15 M</option>
+                <option value="U15F">U15 F</option>
+                <option value="U14M">U14 M</option>
+                <option value="U14F">U14 F</option>
+                <option value="U13M">U13 M</option>
+                <option value="U13F">U13 F</option>
+                <option value="U12M">U12 M</option>
+                <option value="U12F">U12 F</option>
+                <option value="U11M">U11 M</option>
+                <option value="U11F">U11 F</option>
+                <option value="U10M">U10 M</option>
+                <option value="U10F">U10 F</option>
+                <option value="U9M">U9 M</option>
+                <option value="U9F">U9 F</option>
+                <option value="U8M">U8 M</option>
+                <option value="U8F">U8 F</option>
+                <option value="U7M">U7 M</option>
+                <option value="U7F">U7 F</option>
+                <option value="U6M">U6 M</option>
+                <option value="U6F">U6 F</option>
+                <option value="U5M">U5 M</option>
+                <option value="U5F">U5 F</option>
+                <option value="Unknown">Inconnu</option>
               </select>
             </div>
             <div class="form-group">
@@ -347,6 +389,44 @@
               <label for="editCategory">Catégorie</label>
               <select id="editCategory" name="category" required>
                 <!-- Options générées dynamiquement par JavaScript -->
+                <option value="Veteran">Veteran</option>
+                <option value="Senior">Senior</option>
+                <option value="Senior F">Senior F</option>
+                <option value="Senior U20">Senior U20</option>
+                <option value="Senior U20 F">Senior U20 F</option>
+                <option value="U20M">U20 M</option>
+                <option value="U20F">U20 F</option>
+                <option value="U19M">U19 M</option>
+                <option value="U19F">U19 F</option>
+                <option value="U18M">U18 M</option>
+                <option value="U18F">U18 F</option>
+                <option value="U17M">U17 M</option>
+                <option value="U17F">U17 F</option>
+                <option value="U16M">U16 M</option>
+                <option value="U16F">U16 F</option>
+                <option value="U15M">U15 M</option>
+                <option value="U15F">U15 F</option>
+                <option value="U14M">U14 M</option>
+                <option value="U14F">U14 F</option>
+                <option value="U13M">U13 M</option>
+                <option value="U13F">U13 F</option>
+                <option value="U12M">U12 M</option>
+                <option value="U12F">U12 F</option>
+                <option value="U11M">U11 M</option>
+                <option value="U11F">U11 F</option>
+                <option value="U10M">U10 M</option>
+                <option value="U10F">U10 F</option>
+                <option value="U9M">U9 M</option>
+                <option value="U9F">U9 F</option>
+                <option value="U8M">U8 M</option>
+                <option value="U8F">U8 F</option>
+                <option value="U7M">U7 M</option>
+                <option value="U7F">U7 F</option>
+                <option value="U6M">U6 M</option>
+                <option value="U6F">U6 F</option>
+                <option value="U5M">U5 M</option>
+                <option value="U5F">U5 F</option>
+                <option value="Unknown">Inconnu</option>
               </select>
             </div>
             <div class="form-group">

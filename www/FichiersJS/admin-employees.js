@@ -155,6 +155,9 @@ function setupEventListeners() {
   document.getElementById("editHourlyRate").addEventListener("input", function() {
     document.getElementById("editMonthlySalary").value = "";
   });
+
+  // Écouteur pour le bouton d'exportation
+  document.getElementById("exportBtn").addEventListener("click", exportAllEmployeeData);
 }
 
 // ======================================
@@ -880,5 +883,527 @@ async function paySalary(employeeId) {
   } catch (error) {
     console.error("Erreur de paiement:", error);
     alert("Erreur lors du paiement du salaire");
+  }
+}
+
+
+
+// ======================================
+// FONCTIONS D'EXPORTATION OPTIMISÉES
+// ======================================
+
+/**
+ * Fonction pour exporter toutes les données des employés de manière optimisée
+ */
+async function exportAllEmployeeData() {
+  showLoading("Préparation de l'exportation des données...");
+
+  try {
+    // Récupérer tous les employés
+    const response = await fetch('https://backendestrappes.fr/protected/employees', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem("adminToken")}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('Erreur lors de la récupération des employés');
+    }
+
+    const employees = await response.json();
+    
+    // Afficher la progression
+    updateLoadingMessage(`0/${employees.length} employés traités...`);
+    
+    const completeEmployeeData = [];
+    const batchSize = 10; // Nombre de requêtes simultanées
+    let processedCount = 0;
+
+    // Traitement par lots
+    for (let i = 0; i < employees.length; i += batchSize) {
+      const batch = employees.slice(i, i + batchSize);
+      
+      // Exécuter les requêtes en parallèle pour ce lot
+      const batchPromises = batch.map(employee => 
+        fetchEmployeeDetails(employee._id)
+          .then(detailedEmployee => {
+            if (detailedEmployee) {
+              completeEmployeeData.push(detailedEmployee);
+            }
+            processedCount++;
+            updateLoadingMessage(`${processedCount}/${employees.length} employés traités...`);
+          })
+          .catch(error => {
+            console.error(`Erreur pour l'employé ID ${employee._id}:`, error);
+            processedCount++;
+            updateLoadingMessage(`${processedCount}/${employees.length} employés traités...`);
+          })
+      );
+      
+      // Attendre que toutes les requêtes du lot soient terminées
+      await Promise.all(batchPromises);
+    }
+
+    // Une fois toutes les données collectées, les exporter en Excel
+    updateLoadingMessage("Génération du fichier Excel...");
+    exportToExcel(completeEmployeeData);
+    hideLoading();
+  } catch (error) {
+    console.error('Erreur:', error);
+    alert('Une erreur est survenue lors de l\'exportation des données');
+    hideLoading();
+  }
+}
+
+/**
+ * Récupère les détails d'un employé spécifique
+ * @param {string} employeeId - ID de l'employé
+ * @return {Promise} - Promesse résolue avec les détails de l'employé
+ */
+async function fetchEmployeeDetails(employeeId) {
+  try {
+    const employeeDetailsResponse = await fetch(`https://backendestrappes.fr/protected/employees/${employeeId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem("adminToken")}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!employeeDetailsResponse.ok) {
+      throw new Error(`Erreur HTTP: ${employeeDetailsResponse.status}`);
+    }
+
+    return await employeeDetailsResponse.json();
+  } catch (error) {
+    console.error(`Échec de récupération des détails pour l'employé ${employeeId}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Met à jour le message de chargement
+ * @param {string} message - Le nouveau message
+ */
+function updateLoadingMessage(message) {
+  const loadingMessage = document.getElementById('loadingMessage');
+  if (loadingMessage) {
+    loadingMessage.textContent = message;
+  }
+}
+
+/**
+ * Fonction pour exporter les données au format Excel avec usage de Web Workers
+ * @param {Array} data - Données à exporter
+ */
+function exportToExcel(data) {
+  // Si les données sont vides, afficher un message et arrêter
+  if (!data || data.length === 0) {
+    alert('Aucune donnée à exporter');
+    hideLoading();
+    return;
+  }
+
+  // Vérifier si on peut utiliser les Web Workers
+  if (window.Worker) {
+    try {
+      // Créer un blob URL pour notre code de worker
+      const workerCode = `
+        importScripts('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js');
+        
+        self.onmessage = function(e) {
+          const { data, formattedDate } = e.data;
+          
+          // Créer un classeur
+          const workbook = XLSX.utils.book_new();
+          
+          // Préparer les données formatées
+          const flatData = formatDataForExcel(data);
+          
+          // Convertir le tableau en feuille de calcul
+          const worksheet = XLSX.utils.aoa_to_sheet(flatData);
+          
+          // Calculer les largeurs de colonnes automatiquement
+          worksheet['!cols'] = calculateColumnWidths(flatData);
+          
+          // Ajouter la feuille au classeur
+          XLSX.utils.book_append_sheet(workbook, worksheet, 'Employés et Historique');
+          
+          // Générer le fichier Excel
+          const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+          
+          // Envoyer le buffer au thread principal
+          self.postMessage({
+            buffer: excelBuffer,
+            fileName: \`employees_data_\${formattedDate}.xlsx\`
+          });
+        };
+        
+        function formatDataForExcel(data) {
+          const flatData = [];
+          
+          // En-têtes
+          const employeeHeaders = [
+            'ID', 'Numéro de licence', 'Nom', 'Prénom', 'Email', 'Téléphone',
+            'Date de naissance', 'Genre', 'Position', 'Statut du contrat',
+            'Type de salaire', 'Taux horaire', 'Salaire mensuel'
+          ];
+          
+          const historyHeaders = ['Date', 'Montant', 'Heures travaillées'];
+          
+          // Ajouter l'en-tête
+          flatData.push([...employeeHeaders, '', ...historyHeaders]);
+          
+          // Pour chaque employé
+          data.forEach(employee => {
+            // Préparer les données de l'employé
+            const employeeData = [
+              employee._id,
+              employee.licenseNumber,
+              employee.lastName,
+              employee.firstName,
+              employee.email,
+              employee.phone,
+              formatDate(employee.birthDate),
+              employee.gender === 'M' ? 'Homme' : employee.gender === 'F' ? 'Femme' : 'Inconnu',
+              Array.isArray(employee.positions) ? employee.positions.join(', ') : employee.positions,
+              employee.contractStatus,
+              employee.salaryType,
+              employee.hourlyRate || '',
+              employee.monthlySalary || ''
+            ];
+            
+            // Historique des salaires
+            if (!employee.salaryHistory || employee.salaryHistory.length === 0) {
+              flatData.push([...employeeData, '', 'Aucun historique', '', '']);
+            } else {
+              // Premier paiement
+              const firstPayment = employee.salaryHistory[0];
+              flatData.push([
+                ...employeeData,
+                '',
+                formatDate(firstPayment.date),
+                firstPayment.amount,
+                firstPayment.hoursWorked || 'N/A'
+              ]);
+              
+              // Paiements suivants
+              for (let i = 1; i < employee.salaryHistory.length; i++) {
+                const payment = employee.salaryHistory[i];
+                const emptyEmployeeData = Array(employeeHeaders.length).fill('');
+                flatData.push([
+                  ...emptyEmployeeData,
+                  '',
+                  formatDate(payment.date),
+                  payment.amount,
+                  payment.hoursWorked || 'N/A'
+                ]);
+              }
+            }
+          });
+          
+          return flatData;
+        }
+        
+        function calculateColumnWidths(flatData) {
+          const maxColLengths = [];
+          
+          flatData.forEach(row => {
+            row.forEach((cell, colIndex) => {
+              const cellLength = cell ? String(cell).length : 0;
+              
+              if (!maxColLengths[colIndex]) {
+                maxColLengths[colIndex] = cellLength;
+              } else {
+                maxColLengths[colIndex] = Math.max(maxColLengths[colIndex], cellLength);
+              }
+            });
+          });
+          
+          return maxColLengths.map(length => ({
+            wch: Math.min(Math.max(length * 1.2, 10), 50)
+          }));
+        }
+        
+        function formatDate(dateString) {
+          if (!dateString) return '';
+          
+          const date = new Date(dateString);
+          if (isNaN(date.getTime())) return dateString;
+          
+          return \`\${date.getDate().toString().padStart(2, '0')}/\${(date.getMonth() + 1).toString().padStart(2, '0')}/\${date.getFullYear()}\`;
+        }
+      `;
+      
+      const workerBlob = new Blob([workerCode], { type: 'application/javascript' });
+      const workerUrl = URL.createObjectURL(workerBlob);
+      const worker = new Worker(workerUrl);
+      
+      // Date pour le nom du fichier
+      const date = new Date();
+      const formattedDate = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+      
+      // Écouter les messages du worker
+      worker.onmessage = function(e) {
+        const { buffer, fileName } = e.data;
+        saveExcelFile(buffer, fileName);
+        
+        // Nettoyer
+        worker.terminate();
+        URL.revokeObjectURL(workerUrl);
+        hideLoading();
+      };
+      
+      // Gérer les erreurs du worker
+      worker.onerror = function(error) {
+        console.error('Erreur dans le worker:', error);
+        alert('Une erreur est survenue lors de la génération du fichier Excel');
+        
+        // Nettoyer
+        worker.terminate();
+        URL.revokeObjectURL(workerUrl);
+        hideLoading();
+        
+        // Retomber sur la méthode classique
+        processExcelExport(data);
+      };
+      
+      // Envoyer les données au worker
+      worker.postMessage({ data, formattedDate });
+      
+    } catch (error) {
+      console.error('Erreur lors de la création du worker:', error);
+      // Retomber sur la méthode classique
+      processExcelExport(data);
+    }
+  } else {
+    // Si les Web Workers ne sont pas disponibles, utiliser la méthode classique
+    // Inclure dynamiquement la bibliothèque SheetJS
+    if (typeof XLSX === 'undefined') {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+      script.onload = function() {
+        processExcelExport(data);
+      };
+      document.head.appendChild(script);
+    } else {
+      processExcelExport(data);
+    }
+  }
+}
+
+/**
+ * Fonction pour traiter l'export Excel une fois la bibliothèque chargée (méthode classique de secours)
+ * @param {Array} data - Données à exporter
+ */
+function processExcelExport(data) {
+  // Format de date pour le nom du fichier
+  const date = new Date();
+  const formattedDate = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+
+  // Créer un classeur
+  const workbook = XLSX.utils.book_new();
+
+  // Préparer les données pour l'export
+  const flatData = [];
+
+  // En-têtes pour les employés
+  const employeeHeaders = [
+    'ID', 'Numéro de licence', 'Nom', 'Prénom', 'Email', 'Téléphone',
+    'Date de naissance', 'Genre', 'Position', 'Statut du contrat',
+    'Type de salaire', 'Taux horaire', 'Salaire mensuel'
+  ];
+
+  // En-têtes pour l'historique des salaires
+  const historyHeaders = ['Date', 'Montant', 'Heures travaillées'];
+
+  // Ajouter une ligne d'en-tête au début
+  flatData.push([...employeeHeaders, '', ...historyHeaders]);
+
+  // Pour chaque employé
+  data.forEach(employee => {
+    // Préparer les données de l'employé
+    const employeeData = [
+      employee._id,
+      employee.licenseNumber,
+      employee.lastName,
+      employee.firstName,
+      employee.email,
+      employee.phone,
+      formatDate(employee.birthDate),
+      employee.gender === 'M' ? 'Homme' : employee.gender === 'F' ? 'Femme' : 'Inconnu',
+      Array.isArray(employee.positions) ? employee.positions.join(', ') : employee.positions,
+      employee.contractStatus,
+      employee.salaryType,
+      employee.hourlyRate || '',
+      employee.monthlySalary || ''
+    ];
+
+    // Si l'employé n'a pas d'historique de salaire, ajouter une seule ligne
+    if (!employee.salaryHistory || employee.salaryHistory.length === 0) {
+      flatData.push([...employeeData, '', 'Aucun historique', '', '']);
+    } else {
+      // Pour le premier paiement, combiner avec les données de l'employé
+      const firstPayment = employee.salaryHistory[0];
+      flatData.push([
+        ...employeeData,
+        '',
+        formatDate(firstPayment.date),
+        firstPayment.amount,
+        firstPayment.hoursWorked || 'N/A'
+      ]);
+
+      // Pour les paiements suivants, ajouter des lignes avec uniquement l'historique
+      for (let i = 1; i < employee.salaryHistory.length; i++) {
+        const payment = employee.salaryHistory[i];
+        // Créer un tableau vide pour les colonnes des employés
+        const emptyEmployeeData = Array(employeeHeaders.length).fill('');
+        flatData.push([
+          ...emptyEmployeeData,
+          '',
+          formatDate(payment.date),
+          payment.amount,
+          payment.hoursWorked || 'N/A'
+        ]);
+      }
+    }
+  });
+
+  // Convertir le tableau plat en feuille de calcul
+  const worksheet = XLSX.utils.aoa_to_sheet(flatData);
+
+  // Calculer les largeurs de colonnes automatiquement
+  worksheet['!cols'] = calculateColumnWidths(flatData);
+
+  // Ajouter la feuille au classeur
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Employés et Historique');
+
+  // Générer le fichier Excel
+  const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+  saveExcelFile(excelBuffer, `employees_data_${formattedDate}.xlsx`);
+  hideLoading();
+}
+
+/**
+ * Fonction pour sauvegarder le fichier Excel
+ * @param {ArrayBuffer} buffer - Données du fichier Excel
+ * @param {string} fileName - Nom du fichier
+ */
+function saveExcelFile(buffer, fileName) {
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+  // Créer un lien pour télécharger le fichier
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = fileName;
+
+  // Ajouter temporairement le lien au document et cliquer dessus
+  document.body.appendChild(a);
+  a.click();
+
+  // Nettoyer
+  document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+}
+
+/**
+ * Fonction utilitaire pour formater les dates
+ * @param {string} dateString - Chaîne de date à formater
+ * @return {string} - Date formatée
+ */
+function formatDate(dateString) {
+  if (!dateString) return '';
+
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return dateString; // Retourner la chaîne originale si la date est invalide
+
+  return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
+}
+
+/**
+ * Fonction pour afficher un indicateur de chargement amélioré
+ * @param {string} message - Message à afficher
+ */
+function showLoading(message) {
+  // Créer un élément de chargement s'il n'existe pas déjà
+  if (!document.getElementById('loadingOverlay')) {
+    const overlay = document.createElement('div');
+    overlay.id = 'loadingOverlay';
+    overlay.style.position = 'fixed';
+    overlay.style.top = '0';
+    overlay.style.left = '0';
+    overlay.style.width = '100%';
+    overlay.style.height = '100%';
+    overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+    overlay.style.display = 'flex';
+    overlay.style.justifyContent = 'center';
+    overlay.style.alignItems = 'center';
+    overlay.style.zIndex = '9999';
+
+    const loadingBox = document.createElement('div');
+    loadingBox.style.backgroundColor = 'white';
+    loadingBox.style.padding = '20px';
+    loadingBox.style.borderRadius = '8px';
+    loadingBox.style.textAlign = 'center';
+    loadingBox.style.minWidth = '300px';
+
+    const loadingMessage = document.createElement('p');
+    loadingMessage.id = 'loadingMessage';
+    loadingMessage.textContent = message || 'Chargement en cours...';
+    
+    // Ajouter une barre de progression
+    const progressContainer = document.createElement('div');
+    progressContainer.id = 'progressContainer';
+    progressContainer.style.width = '100%';
+    progressContainer.style.height = '10px';
+    progressContainer.style.backgroundColor = '#f0f0f0';
+    progressContainer.style.borderRadius = '5px';
+    progressContainer.style.marginTop = '10px';
+    progressContainer.style.overflow = 'hidden';
+    progressContainer.style.display = 'none'; // Caché par défaut
+    
+    const progressBar = document.createElement('div');
+    progressBar.id = 'progressBar';
+    progressBar.style.width = '0%';
+    progressBar.style.height = '100%';
+    progressBar.style.backgroundColor = '#4CAF50';
+    progressBar.style.transition = 'width 0.3s';
+    
+    progressContainer.appendChild(progressBar);
+    loadingBox.appendChild(loadingMessage);
+    loadingBox.appendChild(progressContainer);
+    overlay.appendChild(loadingBox);
+    document.body.appendChild(overlay);
+  } else {
+    document.getElementById('loadingMessage').textContent = message || 'Chargement en cours...';
+    document.getElementById('loadingOverlay').style.display = 'flex';
+    document.getElementById('progressBar').style.width = '0%';
+    document.getElementById('progressContainer').style.display = 'none';
+  }
+}
+
+/**
+ * Met à jour la barre de progression
+ * @param {number} percent - Pourcentage de progression (0-100)
+ */
+function updateProgressBar(percent) {
+  const progressContainer = document.getElementById('progressContainer');
+  const progressBar = document.getElementById('progressBar');
+  
+  if (progressContainer && progressBar) {
+    progressContainer.style.display = 'block';
+    progressBar.style.width = `${percent}%`;
+  }
+}
+
+/**
+ * Fonction pour masquer l'indicateur de chargement
+ */
+function hideLoading() {
+  const overlay = document.getElementById('loadingOverlay');
+  if (overlay) {
+    overlay.style.display = 'none';
   }
 }

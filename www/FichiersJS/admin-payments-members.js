@@ -960,3 +960,578 @@ async function confirmAddLicenseCost() {
     loadingIndicator.style.display = "none";
   }
 }
+
+
+
+
+
+
+// ======================================
+// GESTION DES MEMBRES AVEC COMMENTAIRES
+// ======================================
+
+/**
+ * Affiche les membres avec des commentaires dans un modal
+ */
+document.getElementById("showMembersWithComments").addEventListener("click", async function () {
+  try {
+    const response = await fetch(
+      "https://backendestrappes.fr/protected/import/entries-with-comments", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
+        },
+      }
+    );
+    
+    const data = await response.json();
+    const membersList = document.getElementById("membersWithCommentsList");
+    
+    if (membersList) {
+      membersList.innerHTML = "";
+      data.members.forEach((member) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${member.lastName}</td>
+          <td>${member.firstName}</td>
+          <td>${member.comments.join("<br>")}</td>
+        `;
+        membersList.appendChild(row);
+      });
+      
+      document.getElementById("membersWithCommentsModal").style.display = "block";
+    } else {
+      console.error("L'élément membersWithCommentsList n'a pas été trouvé dans le DOM.");
+    }
+  } catch (error) {
+    console.error("Erreur lors de la récupération des membres avec commentaires:", error);
+  }
+});
+
+/**
+ * Ferme le modal des membres avec commentaires
+ */
+function closeMembersWithCommentsModal() {
+  document.getElementById("membersWithCommentsModal").style.display = "none";
+}
+
+
+
+// =======================================
+// FONCTIONS D'EXPORTATION OPTIMISÉES
+// =======================================
+
+/**
+ * Fonction pour exporter toutes les données des membres de manière optimisée
+ */
+async function exportAllMemberData() {
+  showLoading("Préparation de l'exportation des données...");
+
+  try {
+    // Récupérer tous les membres
+    const response = await fetch('https://backendestrappes.fr/protected/members', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem("adminToken")}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('Erreur lors de la récupération des membres');
+    }
+
+    const members = await response.json();
+
+    // Afficher la progression
+    updateLoadingMessage(`0/${members.length} membres traités...`);
+
+    const completeMemberData = [];
+    const batchSize = 10; // Nombre de requêtes simultanées
+    let processedCount = 0;
+
+    // Traitement par lots
+    for (let i = 0; i < members.length; i += batchSize) {
+      const batch = members.slice(i, i + batchSize);
+
+      // Exécuter les requêtes en parallèle pour ce lot
+      const batchPromises = batch.map(member =>
+        fetchMemberDetails(member._id)
+          .then(detailedMember => {
+            if (detailedMember) {
+              completeMemberData.push(detailedMember);
+            }
+            processedCount++;
+            updateLoadingMessage(`${processedCount}/${members.length} membres traités...`);
+          })
+          .catch(error => {
+            console.error(`Erreur pour le membre ID ${member._id}:`, error);
+            processedCount++;
+            updateLoadingMessage(`${processedCount}/${members.length} membres traités...`);
+          })
+      );
+
+      // Attendre que toutes les requêtes du lot soient terminées
+      await Promise.all(batchPromises);
+    }
+
+    // Une fois toutes les données collectées, les exporter en Excel
+    updateLoadingMessage("Génération du fichier Excel...");
+    exportToExcel(completeMemberData);
+    hideLoading();
+  } catch (error) {
+    console.error('Erreur:', error);
+    alert('Une erreur est survenue lors de l\'exportation des données');
+    hideLoading();
+  }
+}
+
+/**
+ * Récupère les détails d'un membre spécifique
+ * @param {string} memberId - ID du membre
+ * @return {Promise} - Promesse résolue avec les détails du membre
+ */
+async function fetchMemberDetails(memberId) {
+  try {
+    const memberDetailsResponse = await fetch(`https://backendestrappes.fr/protected/members/${memberId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem("adminToken")}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!memberDetailsResponse.ok) {
+      throw new Error(`Erreur HTTP: ${memberDetailsResponse.status}`);
+    }
+
+    return await memberDetailsResponse.json();
+  } catch (error) {
+    console.error(`Échec de récupération des détails pour le membre ${memberId}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Met à jour le message de chargement
+ * @param {string} message - Le nouveau message
+ */
+function updateLoadingMessage(message) {
+  const loadingMessage = document.getElementById('loadingMessage');
+  if (loadingMessage) {
+    loadingMessage.textContent = message;
+  }
+}
+
+/**
+ * Fonction pour exporter les données au format Excel avec usage de Web Workers
+ * @param {Array} data - Données à exporter
+ */
+function exportToExcel(data) {
+  // Si les données sont vides, afficher un message et arrêter
+  if (!data || data.length === 0) {
+    alert('Aucune donnée à exporter');
+    hideLoading();
+    return;
+  }
+
+  // Vérifier si on peut utiliser les Web Workers
+  if (window.Worker) {
+    try {
+      // Créer un blob URL pour notre code de worker
+      const workerCode = `
+        importScripts('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js');
+
+        self.onmessage = function(e) {
+          const { data, formattedDate } = e.data;
+
+          // Créer un classeur
+          const workbook = XLSX.utils.book_new();
+
+          // Préparer les données formatées
+          const flatData = formatDataForExcel(data);
+
+          // Convertir le tableau en feuille de calcul
+          const worksheet = XLSX.utils.aoa_to_sheet(flatData);
+
+          // Calculer les largeurs de colonnes automatiquement
+          worksheet['!cols'] = calculateColumnWidths(flatData);
+
+          // Ajouter la feuille au classeur
+          XLSX.utils.book_append_sheet(workbook, worksheet, 'Membres et Historique');
+
+          // Générer le fichier Excel
+          const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+
+          // Envoyer le buffer au thread principal
+          self.postMessage({
+            buffer: excelBuffer,
+            fileName: \`members_data_\${formattedDate}.xlsx\`
+          });
+        };
+
+        function formatDataForExcel(data) {
+          const flatData = [];
+
+          // En-têtes
+          const memberHeaders = [
+            'ID', 'Numéro de licence', 'Nom', 'Prénom', 'Email', 'Téléphone',
+            'Date de naissance', 'Genre', 'Catégorie', 'Statut de paiement',
+            'Montant dû', 'Montant payé'
+          ];
+
+          const historyHeaders = ['Date', 'Montant', 'Méthode de paiement'];
+
+          // Ajouter l'en-tête
+          flatData.push([...memberHeaders, '', ...historyHeaders]);
+
+          // Pour chaque membre
+          data.forEach(member => {
+            // Préparer les données du membre
+            const memberData = [
+              member._id,
+              member.licenseNumber,
+              member.lastName,
+              member.firstName,
+              member.email,
+              member.phone,
+              formatDate(member.birthDate),
+              member.gender === 'M' ? 'Homme' : member.gender === 'F' ? 'Femme' : 'Inconnu',
+              member.category,
+              member.paymentStatus,
+              member.totalDue || '',
+              member.totalPaid || ''
+            ];
+
+            // Historique des paiements
+            if (!member.paymentHistory || member.paymentHistory.length === 0) {
+              flatData.push([...memberData, '', 'Aucun historique', '', '']);
+            } else {
+              // Premier paiement
+              const firstPayment = member.paymentHistory[0];
+              flatData.push([
+                ...memberData,
+                '',
+                formatDate(firstPayment.date),
+                firstPayment.amount,
+                firstPayment.paymentMethod || 'N/A'
+              ]);
+
+              // Paiements suivants
+              for (let i = 1; i < member.paymentHistory.length; i++) {
+                const payment = member.paymentHistory[i];
+                const emptyMemberData = Array(memberHeaders.length).fill('');
+                flatData.push([
+                  ...emptyMemberData,
+                  '',
+                  formatDate(payment.date),
+                  payment.amount,
+                  payment.paymentMethod || 'N/A'
+                ]);
+              }
+            }
+          });
+
+          return flatData;
+        }
+
+        function calculateColumnWidths(flatData) {
+          const maxColLengths = [];
+
+          flatData.forEach(row => {
+            row.forEach((cell, colIndex) => {
+              const cellLength = cell ? String(cell).length : 0;
+
+              if (!maxColLengths[colIndex]) {
+                maxColLengths[colIndex] = cellLength;
+              } else {
+                maxColLengths[colIndex] = Math.max(maxColLengths[colIndex], cellLength);
+              }
+            });
+          });
+
+          return maxColLengths.map(length => ({
+            wch: Math.min(Math.max(length * 1.2, 10), 50)
+          }));
+        }
+
+        function formatDate(dateString) {
+          if (!dateString) return '';
+
+          const date = new Date(dateString);
+          if (isNaN(date.getTime())) return dateString;
+
+          return \`\${date.getDate().toString().padStart(2, '0')}/\${(date.getMonth() + 1).toString().padStart(2, '0')}/\${date.getFullYear()}\`;
+        }
+      `;
+
+      const workerBlob = new Blob([workerCode], { type: 'application/javascript' });
+      const workerUrl = URL.createObjectURL(workerBlob);
+      const worker = new Worker(workerUrl);
+
+      // Date pour le nom du fichier
+      const date = new Date();
+      const formattedDate = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+
+      // Écouter les messages du worker
+      worker.onmessage = function(e) {
+        const { buffer, fileName } = e.data;
+        saveExcelFile(buffer, fileName);
+
+        // Nettoyer
+        worker.terminate();
+        URL.revokeObjectURL(workerUrl);
+        hideLoading();
+      };
+
+      // Gérer les erreurs du worker
+      worker.onerror = function(error) {
+        console.error('Erreur dans le worker:', error);
+        alert('Une erreur est survenue lors de la génération du fichier Excel');
+
+        // Nettoyer
+        worker.terminate();
+        URL.revokeObjectURL(workerUrl);
+        hideLoading();
+
+        // Retomber sur la méthode classique
+        processExcelExport(data);
+      };
+
+      // Envoyer les données au worker
+      worker.postMessage({ data, formattedDate });
+
+    } catch (error) {
+      console.error('Erreur lors de la création du worker:', error);
+      // Retomber sur la méthode classique
+      processExcelExport(data);
+    }
+  } else {
+    // Si les Web Workers ne sont pas disponibles, utiliser la méthode classique
+    // Inclure dynamiquement la bibliothèque SheetJS
+    if (typeof XLSX === 'undefined') {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+      script.onload = function() {
+        processExcelExport(data);
+      };
+      document.head.appendChild(script);
+    } else {
+      processExcelExport(data);
+    }
+  }
+}
+
+/**
+ * Fonction pour traiter l'export Excel une fois la bibliothèque chargée (méthode classique de secours)
+ * @param {Array} data - Données à exporter
+ */
+function processExcelExport(data) {
+  // Format de date pour le nom du fichier
+  const date = new Date();
+  const formattedDate = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+
+  // Créer un classeur
+  const workbook = XLSX.utils.book_new();
+
+  // Préparer les données pour l'export
+  const flatData = [];
+
+  // En-têtes pour les membres
+  const memberHeaders = [
+    'ID', 'Numéro de licence', 'Nom', 'Prénom', 'Email', 'Téléphone',
+    'Date de naissance', 'Genre', 'Catégorie', 'Statut de paiement',
+    'Montant dû', 'Montant payé'
+  ];
+
+  // En-têtes pour l'historique des paiements
+  const historyHeaders = ['Date', 'Montant', 'Méthode de paiement'];
+
+  // Ajouter une ligne d'en-tête au début
+  flatData.push([...memberHeaders, '', ...historyHeaders]);
+
+  // Pour chaque membre
+  data.forEach(member => {
+    // Préparer les données du membre
+    const memberData = [
+      member._id,
+      member.licenseNumber,
+      member.lastName,
+      member.firstName,
+      member.email,
+      member.phone,
+      formatDate(member.birthDate),
+      member.gender === 'M' ? 'Homme' : member.gender === 'F' ? 'Femme' : 'Inconnu',
+      member.category,
+      member.paymentStatus,
+      member.totalDue || '',
+      member.totalPaid || ''
+    ];
+
+    // Si le membre n'a pas d'historique de paiement, ajouter une seule ligne
+    if (!member.paymentHistory || member.paymentHistory.length === 0) {
+      flatData.push([...memberData, '', 'Aucun historique', '', '']);
+    } else {
+      // Pour le premier paiement, combiner avec les données du membre
+      const firstPayment = member.paymentHistory[0];
+      flatData.push([
+        ...memberData,
+        '',
+        formatDate(firstPayment.date),
+        firstPayment.amount,
+        firstPayment.paymentMethod || 'N/A'
+      ]);
+
+      // Pour les paiements suivants, ajouter des lignes avec uniquement l'historique
+      for (let i = 1; i < member.paymentHistory.length; i++) {
+        const payment = member.paymentHistory[i];
+        // Créer un tableau vide pour les colonnes des membres
+        const emptyMemberData = Array(memberHeaders.length).fill('');
+        flatData.push([
+          ...emptyMemberData,
+          '',
+          formatDate(payment.date),
+          payment.amount,
+          payment.paymentMethod || 'N/A'
+        ]);
+      }
+    }
+  });
+
+  // Convertir le tableau plat en feuille de calcul
+  const worksheet = XLSX.utils.aoa_to_sheet(flatData);
+
+  // Calculer les largeurs de colonnes automatiquement
+  worksheet['!cols'] = calculateColumnWidths(flatData);
+
+  // Ajouter la feuille au classeur
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Membres et Historique');
+
+  // Générer le fichier Excel
+  const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+  saveExcelFile(excelBuffer, `members_data_${formattedDate}.xlsx`);
+  hideLoading();
+}
+
+/**
+ * Fonction pour sauvegarder le fichier Excel
+ * @param {ArrayBuffer} buffer - Données du fichier Excel
+ * @param {string} fileName - Nom du fichier
+ */
+function saveExcelFile(buffer, fileName) {
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+  // Créer un lien pour télécharger le fichier
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = fileName;
+
+  // Ajouter temporairement le lien au document et cliquer dessus
+  document.body.appendChild(a);
+  a.click();
+
+  // Nettoyer
+  document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+}
+
+/**
+ * Fonction utilitaire pour formater les dates
+ * @param {string} dateString - Chaîne de date à formater
+ * @return {string} - Date formatée
+ */
+function formatDate(dateString) {
+  if (!dateString) return '';
+
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return dateString; // Retourner la chaîne originale si la date est invalide
+
+  return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
+}
+
+/**
+ * Fonction pour afficher un indicateur de chargement amélioré
+ * @param {string} message - Message à afficher
+ */
+function showLoading(message) {
+  // Créer un élément de chargement s'il n'existe pas déjà
+  if (!document.getElementById('loadingOverlay')) {
+    const overlay = document.createElement('div');
+    overlay.id = 'loadingOverlay';
+    overlay.style.position = 'fixed';
+    overlay.style.top = '0';
+    overlay.style.left = '0';
+    overlay.style.width = '100%';
+    overlay.style.height = '100%';
+    overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+    overlay.style.display = 'flex';
+    overlay.style.justifyContent = 'center';
+    overlay.style.alignItems = 'center';
+    overlay.style.zIndex = '9999';
+
+    const loadingBox = document.createElement('div');
+    loadingBox.style.backgroundColor = 'white';
+    loadingBox.style.padding = '20px';
+    loadingBox.style.borderRadius = '8px';
+    loadingBox.style.textAlign = 'center';
+    loadingBox.style.minWidth = '300px';
+
+    const loadingMessage = document.createElement('p');
+    loadingMessage.id = 'loadingMessage';
+    loadingMessage.textContent = message || 'Chargement en cours...';
+
+    // Ajouter une barre de progression
+    const progressContainer = document.createElement('div');
+    progressContainer.id = 'progressContainer';
+    progressContainer.style.width = '100%';
+    progressContainer.style.height = '10px';
+    progressContainer.style.backgroundColor = '#f0f0f0';
+    progressContainer.style.borderRadius = '5px';
+    progressContainer.style.marginTop = '10px';
+    progressContainer.style.overflow = 'hidden';
+    progressContainer.style.display = 'none'; // Caché par défaut
+
+    const progressBar = document.createElement('div');
+    progressBar.id = 'progressBar';
+    progressBar.style.width = '0%';
+    progressBar.style.height = '100%';
+    progressBar.style.backgroundColor = '#4CAF50';
+    progressBar.style.transition = 'width 0.3s';
+
+    progressContainer.appendChild(progressBar);
+    loadingBox.appendChild(loadingMessage);
+    loadingBox.appendChild(progressContainer);
+    overlay.appendChild(loadingBox);
+    document.body.appendChild(overlay);
+  } else {
+    document.getElementById('loadingMessage').textContent = message || 'Chargement en cours...';
+    document.getElementById('loadingOverlay').style.display = 'flex';
+    document.getElementById('progressBar').style.width = '0%';
+    document.getElementById('progressContainer').style.display = 'none';
+  }
+}
+
+/**
+ * Met à jour la barre de progression
+ * @param {number} percent - Pourcentage de progression (0-100)
+ */
+function updateProgressBar(percent) {
+  const progressContainer = document.getElementById('progressContainer');
+  const progressBar = document.getElementById('progressBar');
+
+  if (progressContainer && progressBar) {
+    progressContainer.style.display = 'block';
+    progressBar.style.width = `${percent}%`;
+  }
+}
+
+/**
+ * Fonction pour masquer l'indicateur de chargement
+ */
+function hideLoading() {
+  const overlay = document.getElementById('loadingOverlay');
+  if (overlay) {
+    overlay.style.display = 'none';
+  }
+}

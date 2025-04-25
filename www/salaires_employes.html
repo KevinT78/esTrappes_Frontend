@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Gestion des Employés - ES Trappes</title>
+    <title>Gestion des Cotisations - ES Trappes</title>
     <link rel="stylesheet" href="./FichiersCSS/adminStyle.css" />
     <link
       href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap"
@@ -42,6 +42,22 @@
       .close:hover {
         color: #000;
       }
+      .spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #3498db;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        animation: spin 1s linear infinite;
+      }
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
       .disabled-link {
         color: gray;
         cursor: not-allowed;
@@ -54,7 +70,7 @@
   <body>
     <div class="container">
       <div class="header">
-        <h1>Gestion des Employés</h1>
+        <h1>Gestion des Cotisations</h1>
         <nav>
           <a
             href="cotisations_membres.html"
@@ -80,35 +96,102 @@
           <a
             href="ActualitesAdmin.html"
             class="restricted-link"
-            data-roles="adminCom"
+            data-roles="adminCom, superadmin"
             >Gestion des Actualités</a
           >
           <button id="logoutBtn" class="btn btn-danger">Déconnexion</button>
         </nav>
       </div>
 
-      <div id="employees" class="tab-content">
-        <h2>Salaires des Employés</h2>
+      <div id="members" class="tab-content">
+        <h2>Cotisations des Membres</h2>
         <div class="filters">
           <input
             type="text"
             id="searchInput"
-            placeholder="Rechercher un employé..."
+            placeholder="Rechercher un membre..."
           />
-          <select id="contractStatusFilter">
+          <select id="paymentStatusFilter">
             <option value="">Tous les statuts</option>
-            <option value="CDI">CDI</option>
-            <option value="CDD">CDD</option>
-            <option value="Indépendant">Indépendant</option>
+            <option value="paid">Payé</option>
+            <option value="unpaid">Impayé</option>
+            <option value="partial">Partiel</option>
           </select>
-          <select id="positionFilter">
-            <option value="">Toutes les positions</option>
-            <!-- Options générées dynamiquement par JavaScript -->
+          <select id="categoryFilter">
+            <option value="">Toutes les catégories</option>
+            <option value="Veteran">Veteran</option>
+            <option value="Senior">Senior</option>
+            <option value="Senior F">Senior F</option>
+            <option value="Senior U20">Senior U20</option>
+            <option value="Senior U20 F">Senior U20 F</option>
+            <option value="U20M">U20 M</option>
+            <option value="U20F">U20 F</option>
+            <option value="U19M">U19 M</option>
+            <option value="U19F">U19 F</option>
+            <option value="U18M">U18 M</option>
+            <option value="U18F">U18 F</option>
+            <option value="U17M">U17 M</option>
+            <option value="U17F">U17 F</option>
+            <option value="U16M">U16 M</option>
+            <option value="U16F">U16 F</option>
+            <option value="U15M">U15 M</option>
+            <option value="U15F">U15 F</option>
+            <option value="U14M">U14 M</option>
+            <option value="U14F">U14 F</option>
+            <option value="U13M">U13 M</option>
+            <option value="U13F">U13 F</option>
+            <option value="U12M">U12 M</option>
+            <option value="U12F">U12 F</option>
+            <option value="U11M">U11 M</option>
+            <option value="U11F">U11 F</option>
+            <option value="U10M">U10 M</option>
+            <option value="U10F">U10 F</option>
+            <option value="U9M">U9 M</option>
+            <option value="U9F">U9 F</option>
+            <option value="U8M">U8 M</option>
+            <option value="U8F">U8 F</option>
+            <option value="U7M">U7 M</option>
+            <option value="U7F">U7 F</option>
+            <option value="U6M">U6 M</option>
+            <option value="U6F">U6 F</option>
+            <option value="U5M">U5 M</option>
+            <option value="U5F">U5 F</option>
+            <option value="Unknown">Inconnu</option>
           </select>
-          <div class="button-row">
-            <button onclick="showAddEmployeeModal()" class="btn btn-success">
-              Ajouter un employé
-            </button>
+          <select id="activeFilter">
+            <option value="">Statut actif</option>
+            <option value="true">Actif</option>
+            <option value="false">Inactif</option>
+          </select>
+        </div>
+        <div class="button-row">
+          <button onclick="showAddMemberModal()" class="btn btn-success">
+            Ajouter un membre
+          </button>
+          <button id="showMembersWithComments" class="btn btn-info">
+            Voir les membres avec commentaires
+          </button>
+          <button
+            id="sendRemindersBtn"
+            onclick="showConfirmReminderModal()"
+            class="btn btn-warning"
+          >
+            Envoyer les rappels de paiement
+          </button>
+          <button id="importMembersBtn" class="btn btn-primary">
+            Importer des membres
+          </button>
+          <input type="file" id="importFileInput" style="display: none" />
+          <button id="addLicenseCostBtn" class="btn btn-warning">
+            Ajouter le coût de la licence à tous
+          </button>
+          <button onclick="exportAllMemberData()" class="btn btn-success">
+            Exporter les données des membres
+          </button>
+          
+          <div id="loadingIndicator" style="display: none; text-align: center">
+            <p>Chargement en cours...</p>
+            <div class="spinner"></div>
           </div>
         </div>
         <table>
@@ -118,14 +201,13 @@
                 Nom ⇅
               </th>
               <th>Prénom</th>
-              <th>Statut du contrat</th>
-              <th>Position</th>
+              <th>Catégorie</th>
+              <th>Statut de paiement</th>
+              <th>Montant dû</th>
               <th>Actions</th>
             </tr>
           </thead>
-          <tbody id="employeesTableBody">
-            <!-- Données injectées par JS -->
-          </tbody>
+          <tbody id="membersTableBody"></tbody>
         </table>
         <div class="pagination-controls">
           <button onclick="firstPage()" class="btn btn-secondary">
@@ -144,38 +226,35 @@
         </div>
       </div>
 
-      <!-- Modal pour les détails d'un employé -->
-      <div id="employeeDetailsModal" class="modal">
+      <!-- Modal pour les détails d'un membre -->
+      <div id="memberDetailsModal" class="modal">
         <div class="modal-content">
           <span class="close" onclick="closeModal()">&times;</span>
-          <h2>Détails de l'employé</h2>
-          <div id="employeeDetailsContent" class="modal-grid">
-            <!-- Détails injectés par JS -->
-          </div>
+          <h2>Détails du membre</h2>
+          <div id="memberDetailsContent" class="modal-grid"></div>
           <div class="payment-history">
             <h3>Historique des paiements</h3>
             <table>
               <thead>
                 <tr>
                   <th>Montant</th>
-                  <th>Heures travaillées</th>
+                  <th>Méthode de paiement</th>
                   <th>Date</th>
+                  <th>Statut</th>
                 </tr>
               </thead>
-              <tbody id="paymentHistoryBody">
-                <!-- Historique des paiements injecté par JS -->
-              </tbody>
+              <tbody id="paymentHistoryBody"></tbody>
             </table>
           </div>
         </div>
       </div>
 
-      <!-- Modal pour ajouter un employé -->
-      <div id="addEmployeeModal" class="modal">
+      <!-- Modal pour ajouter un membre -->
+      <div id="addMemberModal" class="modal">
         <div class="modal-content">
-          <span class="close" onclick="closeAddEmployeeModal()">&times;</span>
-          <h2>Ajouter un nouvel employé</h2>
-          <form id="addEmployeeForm">
+          <span class="close" onclick="closeAddMemberModal()">&times;</span>
+          <h2>Ajouter un nouveau membre</h2>
+          <form id="addMemberForm">
             <div class="form-group">
               <label for="licenseNumber">Numéro de licence</label>
               <input
@@ -210,9 +289,47 @@
               </select>
             </div>
             <div class="form-group">
-              <label for="positions">Position</label>
-              <select id="positions" name="positions" required>
+              <label for="category">Catégorie</label>
+              <select id="category" name="category" required>
                 <!-- Options générées dynamiquement par JavaScript -->
+                <option value="Veteran">Veteran</option>
+                <option value="Senior">Senior</option>
+                <option value="Senior F">Senior F</option>
+                <option value="Senior U20">Senior U20</option>
+                <option value="Senior U20 F">Senior U20 F</option>
+                <option value="U20M">U20 M</option>
+                <option value="U20F">U20 F</option>
+                <option value="U19M">U19 M</option>
+                <option value="U19F">U19 F</option>
+                <option value="U18M">U18 M</option>
+                <option value="U18F">U18 F</option>
+                <option value="U17M">U17 M</option>
+                <option value="U17F">U17 F</option>
+                <option value="U16M">U16 M</option>
+                <option value="U16F">U16 F</option>
+                <option value="U15M">U15 M</option>
+                <option value="U15F">U15 F</option>
+                <option value="U14M">U14 M</option>
+                <option value="U14F">U14 F</option>
+                <option value="U13M">U13 M</option>
+                <option value="U13F">U13 F</option>
+                <option value="U12M">U12 M</option>
+                <option value="U12F">U12 F</option>
+                <option value="U11M">U11 M</option>
+                <option value="U11F">U11 F</option>
+                <option value="U10M">U10 M</option>
+                <option value="U10F">U10 F</option>
+                <option value="U9M">U9 M</option>
+                <option value="U9F">U9 F</option>
+                <option value="U8M">U8 M</option>
+                <option value="U8F">U8 F</option>
+                <option value="U7M">U7 M</option>
+                <option value="U7F">U7 F</option>
+                <option value="U6M">U6 M</option>
+                <option value="U6F">U6 F</option>
+                <option value="U5M">U5 M</option>
+                <option value="U5F">U5 F</option>
+                <option value="Unknown">Inconnu</option>
               </select>
             </div>
             <div class="form-group">
@@ -220,47 +337,28 @@
               <input type="date" id="birthDate" name="birthDate" required />
             </div>
             <div class="form-group">
-              <label for="salaryType">Type de salaire</label>
-              <select id="salaryType" name="salaryType" required>
-                <option value="Horaire">Horaire</option>
-                <option value="Mensuel">Mensuel</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="monthlySalary">Salaire mensuel</label>
-              <input type="number" id="monthlySalary" name="monthlySalary" />
-            </div>
-            <div class="form-group">
-              <label for="hourlyRate">Taux horaire</label>
-              <input type="number" id="hourlyRate" name="hourlyRate" />
-            </div>
-            <div class="form-group">
-              <label for="contractStatus">Statut du contrat</label>
-              <select id="contractStatus" name="contractStatus" required>
-                <option value="CDI">CDI</option>
-                <option value="CDD">CDD</option>
-                <option value="Indépendant">Indépendant</option>
-              </select>
+              <label for="totalDue">Montant total dû</label>
+              <input type="number" id="totalDue" name="totalDue" />
             </div>
             <button type="submit" class="btn btn-primary">Ajouter</button>
           </form>
         </div>
       </div>
 
-      <!-- Modal pour modifier un employé -->
-      <div id="editEmployeeModal" class="modal">
+      <!-- Modal pour modifier un membre -->
+      <div id="editMemberModal" class="modal">
         <div class="modal-content">
-          <span class="close" onclick="closeEditEmployeeModal()">&times;</span>
-          <h2>Modifier un employé</h2>
-          <form id="editEmployeeForm">
-            <input type="hidden" id="editEmployeeId" name="id" />
+          <span class="close" onclick="closeEditMemberModal()">&times;</span>
+          <h2>Modifier un membre</h2>
+          <form id="editMemberForm">
+            <input type="hidden" id="editMemberId" name="id" />
             <div class="form-group">
               <label for="editLicenseNumber">Numéro de licence</label>
               <input
                 type="text"
                 id="editLicenseNumber"
                 name="licenseNumber"
-                disabled
+                required
               />
             </div>
             <div class="form-group">
@@ -272,34 +370,70 @@
               <input type="text" id="editPhone" name="phone" required />
             </div>
             <div class="form-group">
-              <label for="editPositions">Positions</label>
-              <input type="text" id="editPositions" name="positions" required />
+              <label for="editFirstName">Prénom</label>
+              <input type="text" id="editFirstName" name="firstName" required />
             </div>
             <div class="form-group">
-              <label for="editContractStatus">Statut du contrat</label>
-              <select id="editContractStatus" name="contractStatus" required>
-                <option value="CDI">CDI</option>
-                <option value="CDD">CDD</option>
-                <option value="Indépendant">Indépendant</option>
+              <label for="editLastName">Nom</label>
+              <input type="text" id="editLastName" name="lastName" required />
+            </div>
+            <div class="form-group">
+              <label for="editGender">Genre</label>
+              <select id="editGender" name="gender" required>
+                <option value="M">Homme</option>
+                <option value="F">Femme</option>
+                <option value="Unknown">Inconnu</option>
               </select>
             </div>
             <div class="form-group">
-              <label for="editMonthlySalary">Salaire mensuel</label>
-              <input
-                type="number"
-                id="editMonthlySalary"
-                name="monthlySalary"
-              />
+              <label for="editCategory">Catégorie</label>
+              <select id="editCategory" name="category" required>
+                <!-- Options générées dynamiquement par JavaScript -->
+                <option value="Veteran">Veteran</option>
+                <option value="Senior">Senior</option>
+                <option value="Senior F">Senior F</option>
+                <option value="Senior U20">Senior U20</option>
+                <option value="Senior U20 F">Senior U20 F</option>
+                <option value="U20M">U20 M</option>
+                <option value="U20F">U20 F</option>
+                <option value="U19M">U19 M</option>
+                <option value="U19F">U19 F</option>
+                <option value="U18M">U18 M</option>
+                <option value="U18F">U18 F</option>
+                <option value="U17M">U17 M</option>
+                <option value="U17F">U17 F</option>
+                <option value="U16M">U16 M</option>
+                <option value="U16F">U16 F</option>
+                <option value="U15M">U15 M</option>
+                <option value="U15F">U15 F</option>
+                <option value="U14M">U14 M</option>
+                <option value="U14F">U14 F</option>
+                <option value="U13M">U13 M</option>
+                <option value="U13F">U13 F</option>
+                <option value="U12M">U12 M</option>
+                <option value="U12F">U12 F</option>
+                <option value="U11M">U11 M</option>
+                <option value="U11F">U11 F</option>
+                <option value="U10M">U10 M</option>
+                <option value="U10F">U10 F</option>
+                <option value="U9M">U9 M</option>
+                <option value="U9F">U9 F</option>
+                <option value="U8M">U8 M</option>
+                <option value="U8F">U8 F</option>
+                <option value="U7M">U7 M</option>
+                <option value="U7F">U7 F</option>
+                <option value="U6M">U6 M</option>
+                <option value="U6F">U6 F</option>
+                <option value="U5M">U5 M</option>
+                <option value="U5F">U5 F</option>
+                <option value="Unknown">Inconnu</option>
+              </select>
             </div>
             <div class="form-group">
-              <label for="editHourlyRate">Taux horaire</label>
-              <input type="number" id="editHourlyRate" name="hourlyRate" />
-            </div>
-            <div class="form-group">
-              <label for="editSalaryType">Type de salaire</label>
-              <select id="editSalaryType" name="salaryType" required>
-                <option value="Horaire">Horaire</option>
-                <option value="Mensuel">Mensuel</option>
+              <label for="editActive">Statut</label>
+              <select id="editActive" name="active" required>
+                <option value="true">Actif</option>
+                <option value="false">Inactif</option>
               </select>
             </div>
             <button type="submit" class="btn btn-primary">Modifier</button>
@@ -307,27 +441,143 @@
         </div>
       </div>
 
-      <!-- Modal pour enregistrer un salaire -->
-      <div id="recordSalaryModal" class="modal">
+      <!-- Modal pour ajouter un coût supplémentaire -->
+      <div id="additionalCostModal" class="modal">
         <div class="modal-content">
-          <span class="close" onclick="closeRecordSalaryModal()">&times;</span>
-          <h2>Enregistrer un salaire</h2>
-          <form id="recordSalaryForm">
-            <input type="hidden" id="recordEmployeeId" name="id" />
-            <div class="form-group" id="recordHourlyRate">
-              <label for="hoursWorked">Heures travaillées</label>
-              <input type="number" id="hoursWorked" name="hoursWorked" />
+          <span class="close" onclick="closeAdditionalCostModal()"
+            >&times;</span
+          >
+          <h2>Ajouter un coût supplémentaire</h2>
+          <form id="additionalCostForm">
+            <input type="hidden" id="memberIdForCost" name="memberId" />
+            <div class="form-group">
+              <label for="additionalCost">Montant supplémentaire (€)</label>
+              <input
+                type="number"
+                id="additionalCost"
+                name="additionalCost"
+                required
+                min="0"
+                step="0.01"
+              />
             </div>
-            <div class="form-group" id="recordMonthlySalary">
-              <label for="monthlySalary">Salaire mensuel</label>
-              <input type="number" id="monthlySalary" name="monthlySalary" />
-            </div>
-            <button type="submit" class="btn btn-primary">Enregistrer</button>
+            <button type="submit" class="btn btn-primary">Ajouter</button>
           </form>
+        </div>
+      </div>
+
+      <!-- Modal pour enregistrer un paiement -->
+      <div id="paymentModal" class="modal">
+        <div class="modal-content">
+          <span class="close" onclick="closePaymentModal()">&times;</span>
+          <h2>Enregistrer un paiement</h2>
+          <form id="paymentForm">
+            <input type="hidden" id="memberIdForPayment" name="memberId" />
+            <div class="form-group">
+              <label for="paymentAmount">Montant (€)</label>
+              <input
+                type="number"
+                id="paymentAmount"
+                name="paymentAmount"
+                required
+                min="0"
+                step="0.01"
+              />
+            </div>
+            <div class="form-group">
+              <label for="paymentMethod">Méthode de paiement</label>
+              <select id="paymentMethod" name="paymentMethod" required>
+                <option value="espèces">Espèces</option>
+                <option value="carte bancaire">Carte</option>
+                <option value="chèque">Chèque</option>
+                <option value="virement">Virement</option>
+                <option value="Pass Sport">Pass Sport</option>
+                <option value="Chèque sport">Chèque sport</option>
+              </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Paiement</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Modal pour afficher les membres avec commentaires -->
+      <div id="membersWithCommentsModal" class="modal">
+        <div class="modal-content">
+          <span class="close" onclick="closeMembersWithCommentsModal()"
+            >&times;</span
+          >
+          <h2>Membres avec commentaires</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Nom</th>
+                <th>Prénom</th>
+                <th>Commentaires</th>
+              </tr>
+            </thead>
+            <tbody id="membersWithCommentsList"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Modal pour confirmer l'envoi des rappels -->
+      <div id="confirmReminderModal" class="modal">
+        <div class="modal-content">
+          <span class="close" onclick="closeConfirmReminderModal()"
+            >&times;</span
+          >
+          <h2>Confirmation</h2>
+          <p>
+            Êtes-vous sûr de vouloir envoyer des rappels de paiement à tous les
+            membres concernés ?
+          </p>
+          <div class="button-row">
+            <button onclick="confirmSendReminders()" class="btn btn-primary">
+              Oui, envoyer
+            </button>
+            <button
+              onclick="closeConfirmReminderModal()"
+              class="btn btn-secondary"
+            >
+              Annuler
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal pour ajuster le coût de la licence -->
+      <div id="confirmAddLicenseCostModal" class="modal">
+        <div class="modal-content">
+          <span class="close" onclick="closeConfirmAddLicenseCostModal()"
+            >&times;</span
+          >
+          <h2>Ajuster le coût de la licence</h2>
+          <div class="form-group">
+            <label for="licenseCost">Coût de la licence (€) :</label>
+            <input
+              type="number"
+              id="licenseCost"
+              name="licenseCost"
+              required
+              min="0"
+              step="0.01"
+            />
+          </div>
+          <div class="button-row">
+            <button onclick="confirmAddLicenseCost()" class="btn btn-primary">
+              Ajouter le coût
+            </button>
+            <button
+              onclick="closeConfirmAddLicenseCostModal()"
+              class="btn btn-secondary"
+            >
+              Annuler
+            </button>
+          </div>
         </div>
       </div>
     </div>
 
-    <script src="./FichiersJS/admin-employees.js"></script>
+    <script src="./FichiersJS/admin-payments-members.js"></script>
   </body>
 </html>
